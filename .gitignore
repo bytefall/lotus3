@@ -1,5 +1,15 @@
+# cargo
 /target/
 **/*.rs.bk
+
+# SDL for Windows
 SDL2.dll
 SDL2.lib
+
+# IDE files
+.idea
+.vscode
+*.iml
+
+# Lotus itself
 lotus.dat
