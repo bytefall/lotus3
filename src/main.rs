@@ -1,5 +1,4 @@
 #![feature(nll)]
-#![feature(int_to_from_bytes)]
 #![feature(generators, generator_trait)]
 
 use std::ops::{Generator, GeneratorState};
