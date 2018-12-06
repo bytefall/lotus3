@@ -19,6 +19,10 @@ fn main() -> Result<(), std::io::Error> {
 	let mut screen = Screen::new();
 
 	let mut scene = Scene::from(vec![
+		// protection screen
+		Action::Show("I21", Duration::from_millis(200)),
+		Action::Print("ENTER CODE FOR WINDOW 47", (60, 140)),
+		Action::Sleep(Duration::from_millis(1000)),
 		// Gremlin Presents
 		Action::Show("Q00", Duration::from_millis(200)),
 		Action::Animate(

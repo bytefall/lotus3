@@ -11,8 +11,12 @@ pub struct Size {
 	pub height: u32,
 }
 
+mod bitmap;
+mod font;
 mod screen;
 mod sprite;
 
+pub use self::bitmap::Bitmap;
+pub use self::font::{Font, CHAR_SET_03};
 pub use self::screen::Screen;
 pub use self::sprite::Sprite;

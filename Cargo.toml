@@ -7,3 +7,6 @@ edition = "2018"
 [dependencies.sdl2]
 version = "0.31.0"
 features = ["unsafe_textures"]
+
+[dev-dependencies]
+md5 = "0.6.0"
