@@ -40,6 +40,8 @@ fn main() -> Result<(), std::io::Error> {
 			],
 			Duration::from_millis(50),
 		),
+		Action::Show("Q19", Duration::from_millis(200)), // FIXME: load without palette
+		Action::PrintIntro("A GAME\nBY\nANDREW MORRIS\nAND\nSHAUN SOUTHERN", (118, 43)),
 	]);
 
 	let mut gen = scene.execute(&mut screen, &mut arc);

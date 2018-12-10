@@ -7,7 +7,7 @@ use sdl2::rect::Rect;
 use sdl2::render::{BlendMode, Canvas, Texture, TextureCreator};
 use sdl2::video::{Window, WindowContext};
 
-use super::{Font, Point, Sprite, HEIGHT, WIDTH};
+use super::{Font, Point, Sprite, SpriteFont, HEIGHT, WIDTH};
 
 pub struct Screen {
 	canvas: Canvas<Window>,
@@ -80,6 +80,27 @@ impl Screen {
 
 		texture.set_blend_mode(BlendMode::Blend);
 		texture.with_lock(None, font.print(&self.palette, text)).unwrap();
+
+		self.items.push((
+			texture,
+			Rect::new(point.x, point.y, size.width, size.height),
+		));
+	}
+
+	pub fn add_text_intro(&mut self, text: &str, font: &SpriteFont, point: Point) {
+		let size = font.size(text);
+
+		let mut texture = self
+			.creator
+			.create_texture_streaming(
+				PixelFormatEnum::RGBA8888,
+				size.width,
+				size.height,
+			)
+			.unwrap();
+
+		texture.set_blend_mode(BlendMode::Blend);
+		texture.with_lock(None, font.print(text)).unwrap();
 
 		self.items.push((
 			texture,

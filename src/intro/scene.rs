@@ -2,7 +2,7 @@ use std::ops::{Generator, GeneratorState};
 use std::time::Duration;
 
 use crate::data::Archive;
-use crate::graphics::{Font, Point, Screen, Sprite, CHAR_SET_03};
+use crate::graphics::{Font, Point, Screen, Sprite, SpriteFont, CHAR_SET_03};
 
 pub enum Action<'a> {
 	Sleep(Duration),
@@ -10,6 +10,7 @@ pub enum Action<'a> {
 	ShowSeries(Vec<&'a str>, Duration),
 	Animate(&'a str, Duration, (u32, u32), Box<Fn(i32) -> (i32, i32)>),
 	Print(&'a str, (i32, i32)),
+	PrintIntro(&'a str, (i32, i32)),
 	FadeOut,
 }
 
@@ -82,6 +83,13 @@ impl<'a> Scene<'a> {
 						let font = Font::from(CHAR_SET_03, arc.get("C03").unwrap());
 
 						screen.add_text(text, &font, Point { x: *x, y: *y });
+						screen.update();
+						screen.pop_sprite();
+					}
+					Action::PrintIntro(text, (x, y)) => {
+						let font = SpriteFont::from(arc.get("Q1A").unwrap());
+
+						screen.add_text_intro(text, &font, Point { x: *x, y: *y });
 						screen.update();
 						screen.pop_sprite();
 					}
