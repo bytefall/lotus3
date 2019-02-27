@@ -1,4 +1,4 @@
-use super::{Rgb, Size};
+use super::{Printable, Rgb};
 
 const CHARS: &str = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ.()";
 
@@ -23,54 +23,55 @@ impl SpriteFont {
 	pub fn from(data: Vec<u8>) -> Self {
 		Self { data }
 	}
+}
 
-	pub fn size(&self, text: &str) -> Size {
-		Size {
-			width: (text.len() * HORIZONTAL_SPACE) as u32,
-			height: ((text.chars().filter(|c| c == &'\n').count() + 1) * VERTICAL_SPACE) as u32,
+impl Printable for SpriteFont {
+	fn print(&self, buffer: &mut [u8], pitch: usize, _palette: &[u8], text: &str) {
+		let mut xx = 0;
+		let mut yy = 0;
+
+		for c in text.chars() {
+			if c == ' ' {
+				xx += HORIZONTAL_SPACE;
+				continue;
+			}
+
+			if c == '\n' {
+				xx = 0;
+				yy += VERTICAL_SPACE;
+				continue;
+			}
+
+			if let Some(i) = CHARS.find(c) {
+				let mut data = self.data.chunks(WIDTH * HEIGHT).nth(i).unwrap().iter();
+
+				for y in yy..yy + HEIGHT {
+					for x in xx..xx + WIDTH {
+						let val = *data.next().unwrap() as usize;
+
+						if val == 0 {
+							continue;
+						}
+
+						let offset = y * pitch + x * 4;
+
+						buffer[offset + 0] = 255;
+						buffer[offset + 1] = PALETTE[val].b << 2;
+						buffer[offset + 2] = PALETTE[val].g << 2;
+						buffer[offset + 3] = PALETTE[val].r << 2;
+					}
+				}
+
+				xx += HORIZONTAL_SPACE;
+			}
 		}
 	}
 
-	pub fn print<'a>(&'a self, text: &'a str) -> impl FnOnce(&mut [u8], usize) + 'a {
-		move |buffer: &mut [u8], pitch: usize| {
-			let mut xx = 0;
-			let mut yy = 0;
+	fn width(&self, text: &str) -> u32 {
+		(text.len() * HORIZONTAL_SPACE) as u32
+	}
 
-			for c in text.chars() {
-				if c == ' ' {
-					xx += HORIZONTAL_SPACE;
-					continue;
-				}
-
-				if c == '\n' {
-					xx = 0;
-					yy += VERTICAL_SPACE;
-					continue;
-				}
-
-				if let Some(i) = CHARS.find(c) {
-					let mut data = self.data.chunks(WIDTH * HEIGHT).nth(i).unwrap().iter();
-
-					for y in yy..yy + HEIGHT {
-						for x in xx..xx + WIDTH {
-							let val = *data.next().unwrap() as usize;
-
-							if val == 0 {
-								continue;
-							}
-
-							let offset = y * pitch + x * 4;
-
-							buffer[offset + 0] = 255;
-							buffer[offset + 1] = PALETTE[val].b << 2;
-							buffer[offset + 2] = PALETTE[val].g << 2;
-							buffer[offset + 3] = PALETTE[val].r << 2;
-						}
-					}
-
-					xx += HORIZONTAL_SPACE;
-				}
-			}
-		}
+	fn height(&self, text: &str) -> u32 {
+		((text.chars().filter(|c| c == &'\n').count() + 1) * VERTICAL_SPACE) as u32
 	}
 }
