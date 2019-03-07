@@ -1,8 +1,6 @@
 #![feature(nll)]
 #![feature(generators, generator_trait)]
 
-use std::path::PathBuf;
-
 mod app;
 mod data;
 #[macro_use] mod graphics;
@@ -20,7 +18,7 @@ fn main() -> Result<(), std::io::Error> {
 		height: HEIGHT,
 	};
 
-	let arc = Archive::open(&PathBuf::from("lotus.dat"))?;
+	let arc = Archive::open(&"lotus.dat")?;
 
 	app::run(cfg, Lotus::new(arc));
 
