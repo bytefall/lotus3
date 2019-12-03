@@ -1,16 +1,16 @@
 pub const WIDTH: usize = 320;
 pub const HEIGHT: usize = 200;
-pub const SCREEN_START: Point = Point { x: 0, y: 0 };
+pub const SCREEN_START: Point = Point::xy(0, 0);
 
+#[derive(Clone)]
 pub struct Point {
 	pub x: i32,
 	pub y: i32,
 }
 
-#[allow(unused_macros)]
-macro_rules! point {
-	($x:expr, $y:expr) => {
-		Point { x: $x, y: $y }
+impl Point {
+	pub const fn xy(x: i32, y: i32) -> Self {
+		Self { x, y }
 	}
 }
 
@@ -31,6 +31,12 @@ pub struct Size {
 	pub height: u32,
 }
 
+impl Size {
+	pub const fn wh(width: u32, height: u32) -> Self {
+		Self { width, height }
+	}
+}
+
 pub trait Drawable {
 	fn draw(&self, buffer: &mut [u8], pitch: usize, palette: &[u8]);
 
@@ -46,6 +52,16 @@ pub trait Printable {
 
 	fn height(&self, text: &str) -> u32;
 }
+
+pub trait PaintCanvas {
+	fn color(&mut self, r: u8, g: u8, b: u8, a: u8);
+
+	fn point(&mut self, point: Point);
+
+	fn line(&mut self, start: Point, end: Point);
+}
+
+pub type PaintFn = dyn FnOnce(&[u8], &mut dyn PaintCanvas);
 
 mod bitmap;
 pub mod font;

@@ -9,10 +9,7 @@ impl Sprite {
 	pub fn from(data: Vec<u8>) -> Self {
 		Self {
 			data,
-			size: Size {
-				width: WIDTH as u32,
-				height: HEIGHT as u32,
-			},
+			size: Size::wh(WIDTH as u32, HEIGHT as u32),
 		}
 	}
 
