@@ -10,5 +10,6 @@ pub use script::Script;
 pub use timer::Timer;
 pub use window::{Window, WindowConfig};
 
+pub mod game;
 pub mod intro;
 pub mod menu;

@@ -23,6 +23,7 @@ pub enum GameState {
 	Protection(String),
 	Intro,
 	Menu(Screen),
+	ModelSelect,
 }
 
 impl GameState {

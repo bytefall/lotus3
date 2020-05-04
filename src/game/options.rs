@@ -55,3 +55,28 @@ pub enum Course {
 	Circular = 3,
 	Unknown = 4,
 }
+
+#[derive(Clone, Copy, PartialEq)]
+pub enum Model {
+	Esprit = 0,
+	Elan = 1,
+	M200 = 2,
+}
+
+impl Model {
+	pub fn next(&self) -> Self {
+		match self {
+			Self::Esprit => Self::Elan,
+			Self::Elan => Self::M200,
+			Self::M200 => Self::Esprit,
+		}
+	}
+
+	pub fn prev(&self) -> Self {
+		match self {
+			Self::Esprit => Self::M200,
+			Self::Elan => Self::Esprit,
+			Self::M200 => Self::Elan,
+		}
+	}
+}

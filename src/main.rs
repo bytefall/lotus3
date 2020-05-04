@@ -20,6 +20,7 @@ use crate::{
 		state::{GameFlow, GameState},
 	},
 	systems::{
+		game::ModelSelect,
 		intro::{Intro, Protection},
 		menu::{DefineMenu, MainMenu},
 		Cache, Input, Script, Timer, Window, WindowConfig,
@@ -51,6 +52,7 @@ fn main() -> Result<(), std::io::Error> {
 		.system(Intro::bind()).unwrap()
 		.system(MainMenu::bind()).unwrap()
 		.system(DefineMenu::bind()).unwrap()
+		.system(ModelSelect::bind()).unwrap()
 		// -end-
 		.system(Script::bind()).unwrap()
 		.build()

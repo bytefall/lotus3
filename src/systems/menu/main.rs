@@ -212,7 +212,7 @@ fn key_press(key: &KeyCode, cfg: &mut Config, quit: &mut bool, row: &mut u8, col
 					*editor = if *editor { false } else { true };
 				}
 				START_ITEM_POS => {
-					// Start Game
+					return Some(GameState::ModelSelect);
 				}
 				(0, 2) => {
 					*editor = if *editor { false } else { true };
