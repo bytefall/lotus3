@@ -176,7 +176,7 @@ fn show_credits(dep: &mut Dependencies) {
 		.fade_out(FRONT);
 
 	dep.cmd.batch(CREDITS_FADE_IN_TIMEOUT)
-		.print(FRONT, "COPYRIGHT 1993.", Point::xy(62, 43))
+		.print(FRONT, "COPYRIGHT 1993", Point::xy(62, 43))
 		.print(FRONT, "MAGNETIC FIELDS", Point::xy(55, 67))
 		.print(FRONT, "(SOFTWARE DESIGN) LTD.", Point::xy(10, 91))
 		.print(FRONT, "GREMLIN GRAPHICS", Point::xy(48, 115))
