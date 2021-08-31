@@ -73,6 +73,8 @@ impl<'a> IndexChain<'a> {
 	}
 }
 
+const PIXEL_FORMAT_RGB: PixelFormatEnum = PixelFormatEnum::RGB24;
+const PIXEL_FORMAT_RGBA: PixelFormatEnum = PixelFormatEnum::RGBA8888;
 const FADE_STEP: Duration = Duration::from_millis(3);
 
 impl Window {
@@ -80,7 +82,7 @@ impl Window {
 		let size = Size::wh(sprite.width(), sprite.height());
 
 		let mut txt = self.creator
-			.create_texture_streaming(PixelFormatEnum::RGB24, size.width, size.height)
+			.create_texture_streaming(PIXEL_FORMAT_RGB, size.width, size.height)
 			.unwrap();
 
 		txt.with_lock(None, |buffer: &mut [u8], pitch: usize| {
@@ -97,7 +99,7 @@ impl Window {
 		let size = Size::wh(font.width(&text), font.height(&text));
 
 		let mut txt = self.creator
-			.create_texture_streaming(PixelFormatEnum::RGBA8888, size.width, size.height)
+			.create_texture_streaming(PIXEL_FORMAT_RGBA, size.width, size.height)
 			.unwrap();
 
 		txt.set_blend_mode(BlendMode::Blend);
@@ -116,7 +118,7 @@ impl Window {
 		for<'r> F: FnOnce(&'r [u8], &'r mut dyn PaintCanvas),
 	{
 		let mut txt = self.creator
-			.create_texture_target(self.creator.default_pixel_format(), size.width, size.height)
+			.create_texture_target(PIXEL_FORMAT_RGBA, size.width, size.height)
 			.unwrap();
 
 		txt.set_blend_mode(BlendMode::Blend);
@@ -190,7 +192,7 @@ impl Window {
 
 		// create a texture from all visible textures
 		let mut txt = self.creator
-			.create_texture_target(self.creator.default_pixel_format(), rect.width(), rect.height())
+			.create_texture_target(PIXEL_FORMAT_RGBA, rect.width(), rect.height())
 			.unwrap();
 
 		txt.set_blend_mode(BlendMode::Blend);
@@ -262,11 +264,10 @@ impl Window {
 			}
 		};
 
-		let px_fmt = self.creator.default_pixel_format();
 		let rect = Rect::new(0, 0, 320, 200);
 
 		let mut txt = self.creator
-			.create_texture_target(px_fmt, rect.width(), rect.height())
+			.create_texture_target(PIXEL_FORMAT_RGB, rect.width(), rect.height())
 			.unwrap();
 
 		let Self { ref screen, ref mut cache, .. } = self;
@@ -279,7 +280,7 @@ impl Window {
 				tc.copy(&t.txt, None, Rect::new(s.pos.x, s.pos.y, t.size.width, t.size.height)).unwrap();
 			}
 
-			if let Ok(px_vec) = tc.read_pixels(rect, px_fmt) {
+			if let Ok(px_vec) = tc.read_pixels(rect, PIXEL_FORMAT_RGB) {
 				pixels = px_vec;
 			}
 		}).unwrap();
@@ -290,7 +291,7 @@ impl Window {
 
 		// store (x, y) for each pixel we're going to fade out
 		let points: Vec<_> = pixels
-			.chunks(4) // pixel data is a 4-byte (RGBA) chunk
+			.chunks(3) // pixel data is a 3-byte (RGB) chunk
 			.enumerate()
 			.filter(|(_, x)| x[0..=2] == [color.r, color.g, color.b]) // skip alpha channel
 			.map(|(i, _)| Point2::new(i as i32 % rect.width() as i32, i as i32 / rect.width() as i32))
@@ -330,7 +331,7 @@ impl Window {
 
 		// create a background texture
 		let mut back = self.creator
-			.create_texture_target(self.creator.default_pixel_format(), rect.width(), rect.height())
+			.create_texture_target(PIXEL_FORMAT_RGBA, rect.width(), rect.height())
 			.unwrap();
 
 		let cache = &mut self.cache;
@@ -346,7 +347,7 @@ impl Window {
 
 		// create a foreground texture which is going to be faded
 		let mut front = self.creator
-			.create_texture_target(self.creator.default_pixel_format(), rect.width(), rect.height())
+			.create_texture_target(PIXEL_FORMAT_RGBA, rect.width(), rect.height())
 			.unwrap();
 
 		front.set_blend_mode(BlendMode::Blend);
