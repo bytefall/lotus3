@@ -24,6 +24,7 @@ pub enum GameState {
 	Intro,
 	Menu(Screen),
 	ModelSelect,
+	AudioTuner,
 }
 
 impl GameState {

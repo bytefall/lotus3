@@ -48,7 +48,9 @@ impl<'ctx> System<'ctx> for ModelSelect {
 			return Ok(());
 		}
 
-		if let Some(key) = dep.input.keys.first() {
+		if let Some(key) = dep.input.keys.first().cloned() {
+			dep.input.keys.clear();
+
 			match key {
 				KeyCode::Left => {
 					self.model = self.model.prev();
@@ -66,7 +68,7 @@ impl<'ctx> System<'ctx> for ModelSelect {
 				}
 				KeyCode::Return | KeyCode::Escape => {
 					if matches!(key, KeyCode::Return) {
-						dep.flow.set(GameState::main_menu());
+						dep.flow.set(GameState::AudioTuner);
 					} else {
 						dep.flow.set(GameState::main_menu());
 					};
@@ -83,8 +85,6 @@ impl<'ctx> System<'ctx> for ModelSelect {
 				_ => {}
 			}
 		}
-
-		dep.input.keys.clear();
 
 		if dep.flow.changed {
 			dep.flow.changed = false;

@@ -77,3 +77,9 @@ pub const CHAR_SET_04: CharSet = CharSet {
 	h_space: 7,
 	v_space: 10,
 };
+
+pub const CHAR_SET_06: CharSet = CharSet {
+	chars: "0123456789",
+	h_space: 7,
+	v_space: 10,
+};
