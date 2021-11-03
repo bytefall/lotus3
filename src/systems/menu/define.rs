@@ -1,3 +1,6 @@
+use generational_arena::Index;
+use eyre::Result;
+
 use super::{
 	build_frame,
 	DEFINE_ITEM_POS,
@@ -10,7 +13,6 @@ use crate::{
 	data::Archive,
 	ecs::{
 		context::ControlFlow,
-		errors::{Error, Result},
 		system::System,
 	},
 	game::{
@@ -21,7 +23,6 @@ use crate::{
 	graphics::{font::Font, Point, Sprite, SCREEN_START},
 	systems::{Cache, Input, Window},
 };
-use generational_arena::Index;
 
 pub struct Menu {
 	store: Option<(
@@ -85,7 +86,6 @@ derive_dependencies_from! {
 
 impl<'ctx> System<'ctx> for Menu {
 	type Dependencies = Dependencies<'ctx>;
-	type Error = Error;
 
 	fn create(_: Self::Dependencies) -> Result<Self> {
 		Ok(Self { store: None })

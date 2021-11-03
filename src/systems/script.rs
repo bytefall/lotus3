@@ -1,16 +1,14 @@
+use generational_arena::Index;
+
 use crate::{
 	data::Archive,
-	ecs::{
-		errors::{Error, Result},
-		system::System,
-	},
+	ecs::system::InfallibleSystem,
 	game::{
 		script::{Command, CommandSequence, Layer},
 		state::GameFlow,
 	},
 	systems::{Cache, Timer, Window},
 };
-use generational_arena::Index;
 
 derive_dependencies_from! {
 	pub struct Dependencies<'ctx> {
@@ -28,18 +26,17 @@ pub struct Script {
 	back_ids: Vec<Index>,
 }
 
-impl<'ctx> System<'ctx> for Script {
+impl<'ctx> InfallibleSystem<'ctx> for Script {
 	type Dependencies = Dependencies<'ctx>;
-	type Error = Error;
 
-	fn create(_: Self::Dependencies) -> Result<Self> {
-		Ok(Self {
+	fn create(_: Self::Dependencies) -> Self {
+		Self {
 			front_ids: Vec::new(),
 			back_ids: Vec::new(),
-		})
+		}
 	}
 
-	fn update(&mut self, dep: Self::Dependencies) -> Result<()> {
+	fn update(&mut self, dep: Self::Dependencies) {
 		// quit when there is no batch to process
 		let batch = if let Some(batch) = dep.cmd.pop() {
 			batch
@@ -52,7 +49,7 @@ impl<'ctx> System<'ctx> for Script {
 				self.back_ids.clear();
 			}
 
-			return Ok(());
+			return;
 		};
 
 		for cmd in batch.commands {
@@ -150,8 +147,6 @@ impl<'ctx> System<'ctx> for Script {
 		if let Some(duration) = batch.sleep {
 			dep.timer.sleep(duration);
 		}
-
-		Ok(())
 	}
 
 	fn debug_name() -> &'static str {

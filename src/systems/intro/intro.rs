@@ -1,9 +1,8 @@
+use eyre::Result;
+
 use crate::{
 	data::Archive,
-	ecs::{
-		errors::{Error, Result},
-		system::System,
-	},
+	ecs::system::System,
 	game::{
 		script::{ALL, BACK, FRONT, CommandSequence},
 		state::{GameState, GameFlow},
@@ -26,7 +25,6 @@ pub struct Intro;
 
 impl<'ctx> System<'ctx> for Intro {
 	type Dependencies = Dependencies<'ctx>;
-	type Error = Error;
 
 	fn create(_: Self::Dependencies) -> Result<Self> {
 		Ok(Self)

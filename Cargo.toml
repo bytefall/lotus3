@@ -5,11 +5,9 @@ authors = ["Oleg Scherbakov <scherbakov.oleg@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+eyre = "0.6.5"
+color-eyre = { version = "0.5.11", default-features = false }
 generational-arena = "0.2.4"
-failure = "0.1.5"
-failchain = "0.1015.2"
-log = "0.4.8"
-pretty_env_logger = "0.3.1"
 
 [dependencies.sdl2]
 version = "0.34.5"

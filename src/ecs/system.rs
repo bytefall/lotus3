@@ -1,32 +1,30 @@
-use failure::Fail;
-use std::fmt::{Display, Formatter};
+use eyre::Result;
 use std::marker::PhantomData;
 
 pub trait System<'context>: Sized + 'context {
 	type Dependencies;
-	type Error: Fail;
 
 	fn debug_name() -> &'static str;
 
-	fn create(dependencies: Self::Dependencies) -> Result<Self, Self::Error>;
+	fn create(dep: Self::Dependencies) -> Result<Self>;
 
 	#[inline]
-	fn setup(&mut self, _dependencies: Self::Dependencies) -> Result<(), Self::Error> {
+	fn setup(&mut self, _dep: Self::Dependencies) -> Result<()> {
 		Ok(())
 	}
 
 	#[inline]
-	fn update(&mut self, _dependencies: Self::Dependencies) -> Result<(), Self::Error> {
+	fn update(&mut self, _dep: Self::Dependencies) -> Result<()> {
 		Ok(())
 	}
 
 	#[inline]
-	fn teardown(&mut self, _dependencies: Self::Dependencies) -> Result<(), Self::Error> {
+	fn teardown(&mut self, _dep: Self::Dependencies) -> Result<()> {
 		Ok(())
 	}
 
 	#[inline]
-	fn destroy(self, _dependencies: Self::Dependencies) -> Result<(), Self::Error> {
+	fn destroy(self, _dep: Self::Dependencies) -> Result<()> {
 		Ok(())
 	}
 
@@ -56,25 +54,11 @@ pub trait InfallibleSystem<'context>: Sized + 'context {
 	fn destroy(self, _dependencies: Self::Dependencies) {}
 }
 
-pub type AlwaysOk<T> = Result<T, NoError>;
-
-#[derive(Debug)]
-pub enum NoError {}
-
-impl Display for NoError {
-	fn fmt(&self, _: &mut Formatter) -> std::fmt::Result {
-		unreachable!();
-	}
-}
-
-impl Fail for NoError {}
-
 impl<'context, SystemT> System<'context> for SystemT
 where
 	Self: InfallibleSystem<'context>,
 {
 	type Dependencies = <Self as InfallibleSystem<'context>>::Dependencies;
-	type Error = NoError;
 
 	#[inline]
 	fn debug_name() -> &'static str {
@@ -82,33 +66,33 @@ where
 	}
 
 	#[inline]
-	fn create(dependencies: Self::Dependencies) -> AlwaysOk<Self> {
+	fn create(dependencies: Self::Dependencies) -> Result<Self> {
 		Ok(<Self as InfallibleSystem>::create(dependencies))
 	}
 
 	#[inline]
-	fn setup(&mut self, dependencies: Self::Dependencies) -> AlwaysOk<()> {
+	fn setup(&mut self, dependencies: Self::Dependencies) -> Result<()> {
 		<Self as InfallibleSystem>::setup(self, dependencies);
 
 		Ok(())
 	}
 
 	#[inline]
-	fn update(&mut self, dependencies: Self::Dependencies) -> AlwaysOk<()> {
+	fn update(&mut self, dependencies: Self::Dependencies) -> Result<()> {
 		<Self as InfallibleSystem>::update(self, dependencies);
 
 		Ok(())
 	}
 
 	#[inline]
-	fn teardown(&mut self, dependencies: Self::Dependencies) -> AlwaysOk<()> {
+	fn teardown(&mut self, dependencies: Self::Dependencies) -> Result<()> {
 		<Self as InfallibleSystem>::teardown(self, dependencies);
 
 		Ok(())
 	}
 
 	#[inline]
-	fn destroy(self, dependencies: Self::Dependencies) -> AlwaysOk<()> {
+	fn destroy(self, dependencies: Self::Dependencies) -> Result<()> {
 		<Self as InfallibleSystem>::destroy(self, dependencies);
 
 		Ok(())

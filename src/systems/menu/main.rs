@@ -1,3 +1,6 @@
+use generational_arena::Index;
+use eyre::Result;
+
 use super::{
 	build_frame,
 	START_ITEM_POS, DEFINE_ITEM_POS,
@@ -8,7 +11,6 @@ use crate::{
 	data::Archive,
 	ecs::{
 		context::ControlFlow,
-		errors::{Error, Result},
 		system::System,
 	},
 	game::{
@@ -19,7 +21,6 @@ use crate::{
 	graphics::{Point, Sprite, SCREEN_START, font::Font},
 	systems::{Cache, Input, Window},
 };
-use generational_arena::Index;
 
 macro_rules! switch_option {
 	($opt:expr, $v1:expr, $v2:expr) => {
@@ -113,7 +114,6 @@ derive_dependencies_from! {
 
 impl<'ctx> System<'ctx> for Menu {
 	type Dependencies = Dependencies<'ctx>;
-	type Error = Error;
 
 	fn create(_: Self::Dependencies) -> Result<Self> {
 		Ok(Self {

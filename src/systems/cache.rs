@@ -1,9 +1,8 @@
+use eyre::Result;
+
 use crate::{
 	data::Archive,
-	ecs::{
-		errors::{Error, Result},
-		system::System,
-	},
+	ecs::system::System,
 	graphics::{
 		font::{Font, CHAR_SET_03, CHAR_SET_04, CHAR_SET_06},
 		SpriteFont,
@@ -25,7 +24,6 @@ pub struct Cache {
 
 impl<'ctx> System<'ctx> for Cache {
 	type Dependencies = Dependencies<'ctx>;
-	type Error = Error;
 
 	fn create(dep: Self::Dependencies) -> Result<Self> {
 		Ok(Self {

@@ -1,10 +1,4 @@
-use crate::{
-	ecs::{
-		errors::{Error, ErrorKind, Result},
-		system::System,
-	},
-	graphics::{Drawable, PaintCanvas, Point, Printable, Size},
-};
+use eyre::Result;
 use generational_arena::{Arena, Index};
 use sdl2::{
 	pixels::{Color, PixelFormatEnum},
@@ -17,6 +11,11 @@ use std::{
 	cmp::{max, min},
 	thread,
 	time::{Duration, Instant},
+};
+
+use crate::{
+	ecs::system::System,
+	graphics::{Drawable, PaintCanvas, Point, Printable, Size},
 };
 
 impl<T> PaintCanvas for Canvas<T>
@@ -396,7 +395,6 @@ const SCREEN_SCALE: u8 = 2;
 
 impl<'ctx> System<'ctx> for Window {
 	type Dependencies = &'ctx WindowConfig;
-	type Error = Error;
 
 	fn create(cfg: Self::Dependencies) -> Result<Self> {
 		let context = sdl2::init().unwrap();
@@ -405,8 +403,7 @@ impl<'ctx> System<'ctx> for Window {
 		let window = video
 			.window(cfg.title, cfg.width as u32 * SCREEN_SCALE as u32, cfg.height as u32 * SCREEN_SCALE as u32)
 			.position_centered()
-			.build()
-			.map_err(|e| ErrorKind::BuildWindow(e.to_string()))?;
+			.build()?;
 
 		let mut canvas = window.into_canvas().build().unwrap();
 		canvas.set_scale(SCREEN_SCALE as f32, SCREEN_SCALE as f32).unwrap();

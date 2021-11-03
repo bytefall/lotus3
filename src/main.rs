@@ -1,13 +1,3 @@
-#[macro_use]
-extern crate log;
-
-mod data;
-#[macro_use]
-mod ecs;
-mod game;
-mod graphics;
-mod systems;
-
 use crate::{
 	data::Archive,
 	ecs::{
@@ -27,8 +17,15 @@ use crate::{
 	},
 };
 
-fn main() -> Result<(), std::io::Error> {
-	pretty_env_logger::init();
+mod data;
+#[macro_use]
+mod ecs;
+mod game;
+mod graphics;
+mod systems;
+
+fn main() -> eyre::Result<()> {
+	color_eyre::install()?;
 
 	let arc = Archive::open(&"lotus.dat")?;
 	let cfg = Config::new();
@@ -43,23 +40,22 @@ fn main() -> Result<(), std::io::Error> {
 		.inject_mut(cfg)
 		.inject_mut(CommandSequence::new())
 		.inject_mut(GameFlow::new(GameState::Protection(String::new())))
-		.system(Timer::bind()).unwrap()
-		.system(Window::bind()).unwrap()
-		.system(Input::bind()).unwrap()
-		.system(Cache::bind()).unwrap()
+		.system(Timer::bind())?
+		.system(Window::bind())?
+		.system(Input::bind())?
+		.system(Cache::bind())?
 		// game systems
-		.system(Protection::bind()).unwrap()
-		.system(Intro::bind()).unwrap()
-		.system(MainMenu::bind()).unwrap()
-		.system(DefineMenu::bind()).unwrap()
-		.system(ModelSelect::bind()).unwrap()
-		.system(AudioTuner::bind()).unwrap()
+		.system(Protection::bind())?
+		.system(Intro::bind())?
+		.system(MainMenu::bind())?
+		.system(DefineMenu::bind())?
+		.system(ModelSelect::bind())?
+		.system(AudioTuner::bind())?
 		// -end-
-		.system(Script::bind()).unwrap()
-		.build()
-		.unwrap();
+		.system(Script::bind())?
+		.build()?;
 
-	ctx.run().unwrap();
+	ctx.run()?;
 
 	Ok(())
 }

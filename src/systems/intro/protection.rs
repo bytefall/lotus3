@@ -1,9 +1,9 @@
+use generational_arena::Index;
+use eyre::Result;
+
 use crate::{
 	data::Archive,
-	ecs::{
-		errors::{Error, Result},
-		system::System,
-	},
+	ecs::system::System,
 	game::{
 		input::KeyCode,
 		state::{GameFlow, GameState},
@@ -11,7 +11,6 @@ use crate::{
 	graphics::{Point, Size, Sprite, SCREEN_START},
 	systems::{Cache, Input, Window},
 };
-use generational_arena::Index;
 
 derive_dependencies_from! {
 	pub struct Dependencies<'ctx> {
@@ -29,7 +28,6 @@ pub struct Protection {
 
 impl<'ctx> System<'ctx> for Protection {
 	type Dependencies = Dependencies<'ctx>;
-	type Error = Error;
 
 	fn create(_: Self::Dependencies) -> Result<Self> {
 		Ok(Self { input_id: None })

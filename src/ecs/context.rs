@@ -1,9 +1,8 @@
 use super::{
-	errors::{ErrorKind, Result},
 	hlist::{Cons, Nil, Peek, Pluck, PluckInto},
 	system::{BoundSystem, System},
 };
-use failchain::ResultExt as _;
+use eyre::Result;
 use std::marker::PhantomData;
 
 pub trait Context {
@@ -85,8 +84,7 @@ impl<SystemListT> ContextBuilder<SystemListT> {
 	where
 		SystemListT: SystemList<IndicesT> + Peek<ControlFlow, ControlIndexT>,
 	{
-		SystemListT::setup_list(&mut self.systems).chain_err(|| ErrorKind::Context("setup"))?;
-		info!("Context set up.");
+		SystemListT::setup_list(&mut self.systems)?;
 
 		Ok(ContextObject {
 			systems: Some(self.systems),
@@ -145,7 +143,7 @@ where
 	}
 
 	fn step(&mut self) -> Result<()> {
-		SystemListT::update_list(self.systems_mut()).chain_err(|| ErrorKind::Context("update"))
+		SystemListT::update_list(self.systems_mut())
 	}
 
 	fn destroy(&mut self) -> Result<()> {
@@ -155,11 +153,9 @@ where
 			return Ok(());
 		};
 
-		SystemListT::teardown_list(&mut systems).chain_err(|| ErrorKind::Context("teardown"))?;
-		info!("Context tore down.");
+		SystemListT::teardown_list(&mut systems)?;
 
-		SystemListT::destroy_list(systems).chain_err(|| ErrorKind::Context("destruction"))?;
-		info!("Context destroyed.");
+		SystemListT::destroy_list(systems)?;
 
 		Ok(())
 	}
@@ -324,32 +320,22 @@ where
 {
 	#[inline]
 	fn raw_setup(&mut self, context: &'context mut ContextT) -> Result<()> {
-		info!("Setting up system {:?}...", Self::debug_name());
-
 		self.setup(<Self as System>::Dependencies::dependencies_from(context))
-			.chain_err(|| ErrorKind::System("setup", Self::debug_name()))
 	}
 
 	#[inline]
 	fn raw_update(&mut self, context: &'context mut ContextT) -> Result<()> {
 		self.update(<Self as System>::Dependencies::dependencies_from(context))
-			.chain_err(|| ErrorKind::System("update", Self::debug_name()))
 	}
 
 	#[inline]
 	fn raw_teardown(&mut self, context: &'context mut ContextT) -> Result<()> {
-		info!("Tearing down system {:?}...", Self::debug_name());
-
 		self.teardown(<Self as System>::Dependencies::dependencies_from(context))
-			.chain_err(|| ErrorKind::System("teardown", Self::debug_name()))
 	}
 
 	#[inline]
 	fn raw_destroy(self, context: &'context mut ContextT) -> Result<()> {
-		info!("Destroying system {:?}...", Self::debug_name());
-
 		self.destroy(<Self as System>::Dependencies::dependencies_from(context))
-			.chain_err(|| ErrorKind::System("destruction", Self::debug_name()))
 	}
 }
 
@@ -361,10 +347,7 @@ where
 {
 	#[inline]
 	fn raw_create(context: &'context mut ContextT) -> Result<Self> {
-		info!("Creating system {:?}...", Self::debug_name());
-
 		Self::create(<Self as System>::Dependencies::dependencies_from(context))
-			.chain_err(|| ErrorKind::System("creation", Self::debug_name()))
 	}
 }
 

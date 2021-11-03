@@ -1,9 +1,8 @@
+use eyre::Result;
+
 use crate::{
 	data::Archive,
-	ecs::{
-		errors::{Error, Result},
-		system::System,
-	},
+	ecs::system::System,
 	game::state::{GameFlow, GameState},
 	graphics::{Point, Size, Sprite, SCREEN_START},
 	systems::{Input, Timer, Window},
@@ -23,7 +22,6 @@ pub struct AudioTuner;
 
 impl<'ctx> System<'ctx> for AudioTuner {
 	type Dependencies = Dependencies<'ctx>;
-	type Error = Error;
 
 	fn create(_: Self::Dependencies) -> Result<Self> {
 		Ok(Self {

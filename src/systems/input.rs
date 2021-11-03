@@ -1,13 +1,14 @@
+use sdl2::{event::Event, keyboard::Keycode};
+use eyre::Result;
+
 use crate::{
 	ecs::{
 		context::ControlFlow,
-		errors::{Error, Result},
 		system::System,
 	},
 	game::input::KeyCode,
 	systems::Window,
 };
-use sdl2::{event::Event, keyboard::Keycode};
 
 derive_dependencies_from! {
 	pub struct Dependencies<'ctx> {
@@ -22,7 +23,6 @@ pub struct Input {
 
 impl<'ctx> System<'ctx> for Input {
 	type Dependencies = Dependencies<'ctx>;
-	type Error = Error;
 
 	fn create(_: Self::Dependencies) -> Result<Self> {
 		Ok(Self { keys: Vec::new() })

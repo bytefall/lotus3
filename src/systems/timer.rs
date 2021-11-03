@@ -1,8 +1,9 @@
-use crate::ecs::system::InfallibleSystem;
 use std::{
 	thread,
 	time::{Duration, Instant},
 };
+
+use crate::ecs::system::InfallibleSystem;
 
 pub struct Timer {
 	instant: Option<Instant>,
