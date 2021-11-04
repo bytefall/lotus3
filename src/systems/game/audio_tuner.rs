@@ -45,7 +45,7 @@ impl<'ctx> System<'ctx> for AudioTuner {
 		if dep.flow.changed {
 			dep.flow.changed = false;
 
-			let (bgr, pal) = dep.arc.get_with_palette("I1C").unwrap();
+			let (bgr, pal) = dep.arc.get_with_palette("I1C")?;
 			dep.win.palette = pal;
 			dep.win.draw(&Sprite::from(bgr)).show(SCREEN_START);
 
@@ -64,9 +64,5 @@ impl<'ctx> System<'ctx> for AudioTuner {
 		}
 
 		Ok(())
-	}
-
-	fn debug_name() -> &'static str {
-		file!()
 	}
 }

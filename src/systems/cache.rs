@@ -27,14 +27,10 @@ impl<'ctx> System<'ctx> for Cache {
 
 	fn create(dep: Self::Dependencies) -> Result<Self> {
 		Ok(Self {
-			font_c03: Font::from(CHAR_SET_03, dep.arc.get("C03").unwrap()),
-			font_c04: Font::from(CHAR_SET_04, dep.arc.get("C04").unwrap()),
-			font_c06: Font::from(CHAR_SET_06, dep.arc.get("C06").unwrap()),
-			font_q1a: SpriteFont::from(dep.arc.get("Q1A").unwrap()),
+			font_c03: Font::from(CHAR_SET_03, dep.arc.get("C03")?),
+			font_c04: Font::from(CHAR_SET_04, dep.arc.get("C04")?),
+			font_c06: Font::from(CHAR_SET_06, dep.arc.get("C06")?),
+			font_q1a: SpriteFont::from(dep.arc.get("Q1A")?),
 		})
-	}
-
-	fn debug_name() -> &'static str {
-		file!()
 	}
 }

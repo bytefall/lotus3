@@ -148,8 +148,4 @@ impl<'ctx> InfallibleSystem<'ctx> for Script {
 			dep.timer.sleep(duration);
 		}
 	}
-
-	fn debug_name() -> &'static str {
-		file!()
-	}
 }

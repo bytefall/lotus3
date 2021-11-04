@@ -41,9 +41,9 @@ pub struct Menu {
 }
 
 impl Menu {
-	fn prepare(&mut self, win: &mut Window, arc: &Archive) {
-		let (i14, pal) = arc.get_with_palette("I14").unwrap();
-		let i15 = arc.get_series("I15", MENU_ITEM_SIZE.width * MENU_ITEM_SIZE.height).unwrap();
+	fn prepare(&mut self, win: &mut Window, arc: &Archive) -> Result<()> {
+		let (i14, pal) = arc.get_with_palette("I14")?;
+		let i15 = arc.get_series("I15", MENU_ITEM_SIZE.width * MENU_ITEM_SIZE.height)?;
 
 		win.palette = pal;
 
@@ -70,6 +70,8 @@ impl Menu {
 				win.draw(&Sprite::from(i15.get(14).unwrap().to_vec()).with_size(MENU_ITEM_SIZE)).id, // Course::Unknown
 			],
 		));
+
+		Ok(())
 	}
 
 	fn show(&self, win: &mut Window, cfg: &Config, font_c04: &Font, row: u8, col: u8) {
@@ -133,7 +135,7 @@ impl<'ctx> System<'ctx> for Menu {
 
 			dep.win.clear();
 
-			self.prepare(dep.win, dep.arc);
+			self.prepare(dep.win, dep.arc)?;
 			self.show(dep.win, dep.cfg, &dep.cache.font_c04, *row, *col);
 
 			dep.win.fade_in();
@@ -174,10 +176,6 @@ impl<'ctx> System<'ctx> for Menu {
 		}
 
 		Ok(())
-	}
-
-	fn debug_name() -> &'static str {
-		file!()
 	}
 }
 

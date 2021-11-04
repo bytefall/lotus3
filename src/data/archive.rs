@@ -1,13 +1,15 @@
-use super::zip;
+use eyre::{eyre, WrapErr, Result};
 use std::{
 	cell::RefCell,
 	collections::HashMap,
 	fs::File,
-	io::{prelude::*, BufReader, Error, SeekFrom},
+	io::{prelude::*, BufReader, SeekFrom},
 	path::Path,
 	slice::from_raw_parts,
 	str::from_utf8,
 };
+
+use super::zip;
 
 const TABLE_OFFSET: u64 = 0xC;
 
@@ -22,22 +24,25 @@ pub struct Archive {
 }
 
 impl Archive {
-	pub fn open(path: &dyn AsRef<Path>) -> Result<Archive, Error> {
-		let mut file = BufReader::new(File::open(path)?);
-		file.seek(SeekFrom::Start(TABLE_OFFSET)).unwrap();
+	pub fn open(path: &dyn AsRef<Path>) -> Result<Archive> {
+		let file = File::open(path)
+			.wrap_err_with(|| format!("Failed to open data file \"{}\"!", path.as_ref().to_str().unwrap_or("")))?;
+
+		let mut file = BufReader::new(file);
+		file.seek(SeekFrom::Start(TABLE_OFFSET))?;
 
 		let mut items = HashMap::new();
 		let mut prev_key = String::new();
 
 		loop {
 			let mut buffer = [0; 10];
-			file.read(&mut buffer).unwrap();
+			file.read(&mut buffer)?;
 
-			if buffer[0] == 0x0 {
+			if buffer[0] == 0 {
 				break;
 			}
 
-			let key = (unsafe { from_utf8(from_raw_parts(&buffer[0], 3)) }).unwrap();
+			let key = (unsafe { from_utf8(from_raw_parts(&buffer[0], 3)) })?;
 			let offset = (((buffer[9] as u32) << 8) | (buffer[8] as u32)) << 9;
 
 			items.entry(key.to_string()).or_insert(Item { offset, length: 0 });
@@ -55,29 +60,30 @@ impl Archive {
 		})
 	}
 
-	pub fn get(&self, key: &str) -> Option<Vec<u8>> {
-		let item = self.items.get(&key.to_string())?;
+	pub fn get(&self, key: &str) -> Result<Vec<u8>> {
+		let item = self.items.get(&key.to_string())
+			.ok_or_else(|| eyre!("Item \"{}\" is not found in the data file!", key))?;
 
 		let mut buffer = Vec::with_capacity(item.length as usize);
 		buffer.resize(item.length as usize, 0);
 
 		let mut file = self.file.borrow_mut();
-		file.seek(SeekFrom::Start(item.offset.into())).unwrap();
-		file.read_exact(&mut buffer).unwrap();
+		file.seek(SeekFrom::Start(item.offset.into()))?;
+		file.read_exact(&mut buffer)?;
 
-		zip::unpack(&buffer)
+		zip::unpack(&buffer).ok_or_else(|| eyre!("Failed to unpack item \"{}\"!", key))
 	}
 
-	pub fn get_with_palette(&self, key: &str) -> Option<(Vec<u8>, Vec<u8>)> {
+	pub fn get_with_palette(&self, key: &str) -> Result<(Vec<u8>, Vec<u8>)> {
 		let mut data = self.get(key)?;
 
 		let len = data.len();
 		let pal = data.split_off(len - 256 * 3);
 
-		Some((data, pal))
+		Ok((data, pal))
 	}
 
-	pub fn get_series(&self, key: &str, size: u32) -> Option<Vec<Vec<u8>>> {
+	pub fn get_series(&self, key: &str, size: u32) -> Result<Vec<Vec<u8>>> {
 		let mut data = self.get(key)?;
 		let mut rest;
 
@@ -92,6 +98,6 @@ impl Archive {
 			data = rest;
 		}
 
-		Some(series)
+		Ok(series)
 	}
 }

@@ -33,12 +33,14 @@ pub struct Menu {
 }
 
 impl Menu {
-	fn prepare(&mut self, win: &mut Window, arc: &Archive) {
+	fn prepare(&mut self, win: &mut Window, arc: &Archive) -> Result<()> {
 		self.store = Some((
-			win.draw(&Sprite::from(arc.get("I16").unwrap())).id,
+			win.draw(&Sprite::from(arc.get("I16")?)).id,
 			win.paint(FRAME_SIZE_ST, |_, c| build_frame(FRAME_SIZE_ST, c)).id,
 			win.paint(FRAME_SIZE_4R, |_, c| build_frame(FRAME_SIZE_4R, c)).id,
 		));
+
+		Ok(())
 	}
 
 	fn show(&self, win: &mut Window, _cfg: &Config, font_c04: &Font, row: u8) {
@@ -103,7 +105,7 @@ impl<'ctx> System<'ctx> for Menu {
 
 			dep.win.clear();
 
-			self.prepare(dep.win, dep.arc);
+			self.prepare(dep.win, dep.arc)?;
 			self.show(dep.win, dep.cfg, &dep.cache.font_c04, *row);
 
 			dep.win.fade_in();
@@ -137,10 +139,6 @@ impl<'ctx> System<'ctx> for Menu {
 		}
 
 		Ok(())
-	}
-
-	fn debug_name() -> &'static str {
-		file!()
 	}
 }
 

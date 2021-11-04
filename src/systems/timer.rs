@@ -60,8 +60,4 @@ impl<'ctx> InfallibleSystem<'ctx> for Timer {
 
 		self.instant = Some(Instant::now());
 	}
-
-	fn debug_name() -> &'static str {
-		file!()
-	}
 }

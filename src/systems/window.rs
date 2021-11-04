@@ -419,8 +419,4 @@ impl<'ctx> System<'ctx> for Window {
 			screen: Vec::new(),
 		})
 	}
-
-	fn debug_name() -> &'static str {
-		file!()
-	}
 }

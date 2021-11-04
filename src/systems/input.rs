@@ -47,10 +47,6 @@ impl<'ctx> System<'ctx> for Input {
 
 		Ok(())
 	}
-
-	fn debug_name() -> &'static str {
-		file!()
-	}
 }
 
 fn convert(key: Keycode) -> Option<KeyCode> {

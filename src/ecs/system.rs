@@ -4,8 +4,6 @@ use std::marker::PhantomData;
 pub trait System<'context>: Sized + 'context {
 	type Dependencies;
 
-	fn debug_name() -> &'static str;
-
 	fn create(dep: Self::Dependencies) -> Result<Self>;
 
 	#[inline]
@@ -37,21 +35,19 @@ pub trait System<'context>: Sized + 'context {
 pub trait InfallibleSystem<'context>: Sized + 'context {
 	type Dependencies;
 
-	fn debug_name() -> &'static str;
-
-	fn create(dependencies: Self::Dependencies) -> Self;
+	fn create(dep: Self::Dependencies) -> Self;
 
 	#[inline]
-	fn setup(&mut self, _dependencies: Self::Dependencies) {}
+	fn setup(&mut self, _dep: Self::Dependencies) {}
 
 	#[inline]
-	fn update(&mut self, _dependencies: Self::Dependencies) {}
+	fn update(&mut self, _dep: Self::Dependencies) {}
 
 	#[inline]
-	fn teardown(&mut self, _dependencies: Self::Dependencies) {}
+	fn teardown(&mut self, _dep: Self::Dependencies) {}
 
 	#[inline]
-	fn destroy(self, _dependencies: Self::Dependencies) {}
+	fn destroy(self, _dep: Self::Dependencies) {}
 }
 
 impl<'context, SystemT> System<'context> for SystemT
@@ -61,39 +57,34 @@ where
 	type Dependencies = <Self as InfallibleSystem<'context>>::Dependencies;
 
 	#[inline]
-	fn debug_name() -> &'static str {
-		<Self as InfallibleSystem>::debug_name()
+	fn create(dep: Self::Dependencies) -> Result<Self> {
+		Ok(<Self as InfallibleSystem>::create(dep))
 	}
 
 	#[inline]
-	fn create(dependencies: Self::Dependencies) -> Result<Self> {
-		Ok(<Self as InfallibleSystem>::create(dependencies))
-	}
-
-	#[inline]
-	fn setup(&mut self, dependencies: Self::Dependencies) -> Result<()> {
-		<Self as InfallibleSystem>::setup(self, dependencies);
+	fn setup(&mut self, dep: Self::Dependencies) -> Result<()> {
+		<Self as InfallibleSystem>::setup(self, dep);
 
 		Ok(())
 	}
 
 	#[inline]
-	fn update(&mut self, dependencies: Self::Dependencies) -> Result<()> {
-		<Self as InfallibleSystem>::update(self, dependencies);
+	fn update(&mut self, dep: Self::Dependencies) -> Result<()> {
+		<Self as InfallibleSystem>::update(self, dep);
 
 		Ok(())
 	}
 
 	#[inline]
-	fn teardown(&mut self, dependencies: Self::Dependencies) -> Result<()> {
-		<Self as InfallibleSystem>::teardown(self, dependencies);
+	fn teardown(&mut self, dep: Self::Dependencies) -> Result<()> {
+		<Self as InfallibleSystem>::teardown(self, dep);
 
 		Ok(())
 	}
 
 	#[inline]
-	fn destroy(self, dependencies: Self::Dependencies) -> Result<()> {
-		<Self as InfallibleSystem>::destroy(self, dependencies);
+	fn destroy(self, dep: Self::Dependencies) -> Result<()> {
+		<Self as InfallibleSystem>::destroy(self, dep);
 
 		Ok(())
 	}

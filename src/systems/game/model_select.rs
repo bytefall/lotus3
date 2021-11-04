@@ -93,12 +93,12 @@ impl<'ctx> System<'ctx> for ModelSelect {
 
 			let (bgr_key, ani_key) = KEYS[self.model as usize];
 
-			let (bgr, pal) = dep.arc.get_with_palette(bgr_key).unwrap();
+			let (bgr, pal) = dep.arc.get_with_palette(bgr_key)?;
 			dep.win.palette = pal;
 			dep.win.draw(&Sprite::from(bgr)).show(SCREEN_START);
 			dep.win.fade_in();
 
-			let ani = dep.arc.get(ani_key).unwrap();
+			let ani = dep.arc.get(ani_key)?;
 
 			for dat in ani.chunks((ANIM_SIZE.width * ANIM_SIZE.height) as usize) {
 				self.ids.push(dep.win.draw(&Sprite::from(dat.to_vec()).with_size(ANIM_SIZE)).id);
@@ -114,10 +114,6 @@ impl<'ctx> System<'ctx> for ModelSelect {
 		dep.timer.sleep(ANIM_DELAY);
 
 		Ok(())
-	}
-
-	fn debug_name() -> &'static str {
-		file!()
 	}
 }
 
