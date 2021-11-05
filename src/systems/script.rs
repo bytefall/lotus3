@@ -66,8 +66,8 @@ impl<'ctx> InfallibleSystem<'ctx> for Script {
 						None => (),
 					}
 				}
-				Command::Paint(target, foo, size, pos) => {
-					let id = dep.win.paint(size, foo).show(pos).id;
+				Command::Paint(target, f, size, pos) => {
+					let id = dep.win.paint(size, f).show(pos).id;
 
 					match target {
 						Some(Layer::Front) => self.front_ids.push(id),

@@ -95,7 +95,7 @@ impl Window {
 	}
 
 	pub fn print(&mut self, font: &dyn Printable, text: &str) -> IndexChain {
-		let size = Size::wh(font.width(&text), font.height(&text));
+		let size = Size::wh(font.width(text), font.height(text));
 
 		let mut txt = self.creator
 			.create_texture_streaming(PIXEL_FORMAT_RGBA, size.width, size.height)
@@ -103,7 +103,7 @@ impl Window {
 
 		txt.set_blend_mode(BlendMode::Blend);
 		txt.with_lock(None, |buffer: &mut [u8], pitch: usize| {
-			font.print(buffer, pitch, &self.palette, &text)
+			font.print(buffer, pitch, &self.palette, text)
 		}).unwrap();
 
 		IndexChain {
@@ -112,7 +112,7 @@ impl Window {
 		}
 	}
 
-	pub fn paint<F>(&mut self, size: Size, foo: F) -> IndexChain
+	pub fn paint<F>(&mut self, size: Size, f: F) -> IndexChain
 	where
 		for<'r> F: FnOnce(&'r [u8], &'r mut dyn PaintCanvas),
 	{
@@ -124,7 +124,7 @@ impl Window {
 
 		let pal = &self.palette;
 
-		self.canvas.with_texture_canvas(&mut txt, |tc| foo(pal, tc)).unwrap();
+		self.canvas.with_texture_canvas(&mut txt, |tc| f(pal, tc)).unwrap();
 
 		IndexChain {
 			id: self.cache.insert(CacheItem { txt, size }),
@@ -174,7 +174,7 @@ impl Window {
 	/// Renders visible textures and updates the screen.
 	pub fn present(&mut self) {
 		for s in &self.screen {
-			let t = self.cache.get(s.id).expect(&format!("[window.present] Element with id = {:?} is not found", s.id));
+			let t = self.cache.get(s.id).unwrap_or_else(|| panic!("[window.present] Element with id = {:?} is not found", s.id));
 
 			self.canvas.copy(&t.txt, None, Rect::new(s.pos.x, s.pos.y, t.size.width, t.size.height)).unwrap();
 		}
@@ -200,7 +200,7 @@ impl Window {
 
 		self.canvas.with_texture_canvas(&mut txt, |tc| {
 			for s in screen {
-				let t = cache.get(s.id).expect(&format!("[window.fade_in] Element with id = {:?} is not found", s.id));
+				let t = cache.get(s.id).unwrap_or_else(|| panic!("[window.fade_in] Element with id = {:?} is not found", s.id));
 
 				tc.copy(&t.txt, None, Rect::new(s.pos.x, s.pos.y, t.size.width, t.size.height)).unwrap();
 			}
@@ -274,7 +274,7 @@ impl Window {
 
 		self.canvas.with_texture_canvas(&mut txt, |tc| {
 			for s in screen {
-				let t = cache.get(s.id).expect(&format!("[window.fade_out_by_color_ix] Element with id = {:?} is not found", s.id));
+				let t = cache.get(s.id).unwrap_or_else(|| panic!("[window.fade_out_by_color_ix] Element with id = {:?} is not found", s.id));
 
 				tc.copy(&t.txt, None, Rect::new(s.pos.x, s.pos.y, t.size.width, t.size.height)).unwrap();
 			}
@@ -338,7 +338,7 @@ impl Window {
 
 		self.canvas.with_texture_canvas(&mut back, |tc| {
 			for s in iter {
-				let t = cache.get(s.id).expect(&format!("[window.fade_only] Element with id = {:?} is not found", s.id));
+				let t = cache.get(s.id).unwrap_or_else(|| panic!("[window.fade_only] Element with id = {:?} is not found", s.id));
 
 				tc.copy(&t.txt, None, Rect::new(s.pos.x, s.pos.y, t.size.width, t.size.height)).unwrap();
 			}
@@ -355,7 +355,7 @@ impl Window {
 
 		self.canvas.with_texture_canvas(&mut front, |tc| {
 			for s in iter {
-				let t = cache.get(s.id).expect(&format!("[window.fade_only] Element with id = {:?} is not found", s.id));
+				let t = cache.get(s.id).unwrap_or_else(|| panic!("[window.fade_only] Element with id = {:?} is not found", s.id));
 
 				tc.copy(&t.txt, None, Rect::new(s.pos.x, s.pos.y, t.size.width, t.size.height)).unwrap();
 			}
@@ -410,7 +410,7 @@ impl<'ctx> System<'ctx> for Window {
 
 		let creator = canvas.texture_creator();
 
-		Ok(Window {
+		Ok(Self {
 			palette: Vec::new(),
 			context,
 			canvas,

@@ -7,8 +7,7 @@ pub fn unpack(data: &[u8]) -> Option<Vec<u8>> {
 		return None;
 	}
 
-	let mut table = Vec::with_capacity(1024);
-	table.resize(1024, 0u8);
+	let mut table = [0; 1024];
 
 	for i in 0u8..=255 {
 		table[usize::from(i) << 2] = i;
@@ -36,15 +35,15 @@ pub fn unpack(data: &[u8]) -> Option<Vec<u8>> {
 		counter -= 1;
 	}
 
-	let mut unpacked: Vec<u8> = vec![];
+	let mut unpacked = Vec::new();
 	let mut case = 0;
 	let mut word_516e = 0;
 
-	let mut stack: Vec<(u8, u8)> = vec![]; // (ah, al)
+	let mut stack = Vec::new(); // (ah, al)
 
 	// loc_CB14
 	'main: while let Some(mut al) = data.next() {
-		while al == byte_5170 {
+		if al == byte_5170 {
 			// loc_CB38
 			switcher(
 				&mut unpacked,

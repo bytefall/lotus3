@@ -9,7 +9,7 @@ pub struct Bitmap {
 
 impl Bitmap {
 	pub fn from(data: Vec<u8>, par1: u8, par2: u8) -> Self {
-		Bitmap {
+		Self {
 			data: decode(data, par1, par2)
 		}
 	}
@@ -64,7 +64,7 @@ const VAR_30A7: &[u8] = &[
 ];
 
 pub fn decode(mut data: Vec<u8>, word_2e78_ah: u8, word_2e78_al: u8) -> Vec<u8> {
-	let mut buffer: Vec<u8> = vec![];
+	let mut buffer = Vec::new();
 
 	// load first part of 8-byte chunks (last chunk ends with 0xFF)
 	for c in data.chunks(8) {
@@ -118,7 +118,7 @@ pub fn decode(mut data: Vec<u8>, word_2e78_ah: u8, word_2e78_al: u8) -> Vec<u8> 
 
 					if first {
 						si -= 1;
-						al = al >> 4;
+						al >>= 4;
 					}
 
 					first = !first;
@@ -130,10 +130,10 @@ pub fn decode(mut data: Vec<u8>, word_2e78_ah: u8, word_2e78_al: u8) -> Vec<u8> 
 
 						buffer.push(al);
 
-						dh = dh | ah;
+						dh |= ah;
 					}
 
-					ah = ah >> 1;
+					ah >>= 1;
 				}
 
 				buffer[buf_len] = dh;
@@ -153,11 +153,9 @@ pub fn decode(mut data: Vec<u8>, word_2e78_ah: u8, word_2e78_al: u8) -> Vec<u8> 
 			}
 		}
 
-		// align data to 16 bytes
+		// align buffer to 16-bytes boundary
 		if buffer.len() % 16 > 0 {
-			for _ in 0..(16 - buffer.len() % 16) {
-				buffer.push(0);
-			}
+			buffer.resize(buffer.len() + 16 - buffer.len() % 16, 0);
 		}
 
 		bx += 8;

@@ -15,7 +15,7 @@ impl Font {
 }
 
 impl Printable for Font {
-	fn print(&self, mut buffer: &mut [u8], pitch: usize, palette: &[u8], text: &str) {
+	fn print(&self, buffer: &mut [u8], pitch: usize, palette: &[u8], text: &str) {
 		let mut xx = 0;
 		let mut yy = 0;
 
@@ -32,7 +32,7 @@ impl Printable for Font {
 			}
 
 			if let Some(i) = self.char_set.chars.find(c) {
-				self.bitmap.draw(i, Point::xy(xx as i32, yy as i32), &mut buffer, pitch, &palette);
+				self.bitmap.draw(i, Point::xy(xx as i32, yy as i32), buffer, pitch, palette);
 
 				xx += self.char_set.h_space;
 			}

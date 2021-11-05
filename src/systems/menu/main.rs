@@ -28,16 +28,18 @@ macro_rules! switch_option {
 	}
 }
 
+struct Store {
+	bg: Index,
+	frame: Index,
+	trans: [Index; 2],
+	accel: [Index; 2],
+	race: [Index; 2],
+	player: [Index; 2],
+	course: [Index; 5],
+}
+
 pub struct Menu {
-	store: Option<(
-		Index,
-		Index,
-		[Index; 2],
-		[Index; 2],
-		[Index; 2],
-		[Index; 2],
-		[Index; 5],
-	)>,
+	store: Option<Store>,
 }
 
 impl Menu {
@@ -47,58 +49,62 @@ impl Menu {
 
 		win.palette = pal;
 
-		self.store = Some((
-			win.draw(&Sprite::from(i14)).id,
-			win.paint(FRAME_SIZE_ST, |_, c| build_frame(FRAME_SIZE_ST, c)).id,
-			[
+		self.store = Some(Store {
+			bg: win.draw(&Sprite::from(i14)).id,
+			frame: win.paint(FRAME_SIZE_ST, |_, c| build_frame(FRAME_SIZE_ST, c)).id,
+			trans: [
 				win.draw(&Sprite::from(i15.get(0).unwrap().to_vec()).with_size(MENU_ITEM_SIZE)).id, // Transmission::Manual
 				win.draw(&Sprite::from(i15.get(1).unwrap().to_vec()).with_size(MENU_ITEM_SIZE)).id, // Transmission::Automatic
-			],[
+			],
+			accel: [
 				win.draw(&Sprite::from(i15.get(2).unwrap().to_vec()).with_size(MENU_ITEM_SIZE)).id, // Acceleration::Button
 				win.draw(&Sprite::from(i15.get(3).unwrap().to_vec()).with_size(MENU_ITEM_SIZE)).id, // Acceleration::Joystick
-			],[
+			],
+			race: [
 				win.draw(&Sprite::from(i15.get(6).unwrap().to_vec()).with_size(MENU_ITEM_SIZE)).id, // Race::TimeLimit
 				win.draw(&Sprite::from(i15.get(7).unwrap().to_vec()).with_size(MENU_ITEM_SIZE)).id, // Race::Competition
-			],[
+			],
+			player: [
 				win.draw(&Sprite::from(i15.get(8).unwrap().to_vec()).with_size(MENU_ITEM_SIZE)).id, // 1 player
 				win.draw(&Sprite::from(i15.get(9).unwrap().to_vec()).with_size(MENU_ITEM_SIZE)).id, // 2 players
-			],[
+			],
+			course: [
 				win.draw(&Sprite::from(i15.get(10).unwrap().to_vec()).with_size(MENU_ITEM_SIZE)).id, // Course::T1
 				win.draw(&Sprite::from(i15.get(11).unwrap().to_vec()).with_size(MENU_ITEM_SIZE)).id, // Course::T2
 				win.draw(&Sprite::from(i15.get(12).unwrap().to_vec()).with_size(MENU_ITEM_SIZE)).id, // Course::T3
 				win.draw(&Sprite::from(i15.get(13).unwrap().to_vec()).with_size(MENU_ITEM_SIZE)).id, // Course::Circular
 				win.draw(&Sprite::from(i15.get(14).unwrap().to_vec()).with_size(MENU_ITEM_SIZE)).id, // Course::Unknown
 			],
-		));
+		});
 
 		Ok(())
 	}
 
 	fn show(&self, win: &mut Window, cfg: &Config, font_c04: &Font, row: u8, col: u8) {
-		let (bg, frame, trans, accel, race, player, course) = self.store.unwrap();
+		let store = self.store.as_ref().unwrap();
 
-		win.show(bg, SCREEN_START);
+		win.show(store.bg, SCREEN_START);
 
-		win.show(*trans.get(cfg.p1_trans as usize).unwrap(), Point::xy(6, 52));
-		win.show(*accel.get(cfg.p1_accel as usize).unwrap(), Point::xy(6, 91));
-		win.show(*trans.get(cfg.p2_trans as usize).unwrap(), Point::xy(214, 52));
-		win.show(*accel.get(cfg.p2_accel as usize).unwrap(), Point::xy(214, 91));
-		win.show(*race.get(cfg.race as usize).unwrap(), Point::xy(110, 52));
-		win.show(*course.get(cfg.course as usize).unwrap(), Point::xy(110, 91));
-		win.show(*player.get(cfg.players_num as usize - 1).unwrap(), Point::xy(110, 130));
+		win.show(*store.trans.get(cfg.p1_trans as usize).unwrap(), Point::xy(6, 52));
+		win.show(*store.accel.get(cfg.p1_accel as usize).unwrap(), Point::xy(6, 91));
+		win.show(*store.trans.get(cfg.p2_trans as usize).unwrap(), Point::xy(214, 52));
+		win.show(*store.accel.get(cfg.p2_accel as usize).unwrap(), Point::xy(214, 91));
+		win.show(*store.race.get(cfg.race as usize).unwrap(), Point::xy(110, 52));
+		win.show(*store.course.get(cfg.course as usize).unwrap(), Point::xy(110, 91));
+		win.show(*store.player.get(cfg.players_num as usize - 1).unwrap(), Point::xy(110, 130));
 
 		win.print(font_c04, &cfg.p1_name).show(Point::xy(13, 21));
 		win.print(font_c04, &cfg.p2_name).show(Point::xy(221, 21));
 		win.print(font_c04, &cfg.code).show(Point::xy(117, 177));
 
 		// frame should be the last (i.e. on top of everything)
-		let size = win.txt_size(frame).unwrap();
+		let size = win.txt_size(store.frame).unwrap();
 		let rect = Point::xy(
 			(FRAME_OFFSET.0 + col as u32 * (size.width - FRAME_BORDER)) as i32,
 			(FRAME_OFFSET.1 + row as u32 * (size.height - FRAME_BORDER)) as i32,
 		);
 
-		win.show(frame, rect);
+		win.show(store.frame, rect);
 	}
 }
 
@@ -207,13 +213,13 @@ fn key_press(key: &KeyCode, cfg: &mut Config, quit: &mut bool, row: &mut u8, col
 		KeyCode::Return => {
 			match (*row, *col) {
 				(0, 0) => {
-					*editor = if *editor { false } else { true };
+					*editor = !*editor;
 				}
 				START_ITEM_POS => {
 					return Some(GameState::ModelSelect);
 				}
 				(0, 2) => {
-					*editor = if *editor { false } else { true };
+					*editor = !*editor;
 				}
 				(1, 0) => {
 					switch_option!(cfg.p1_trans, Transmission::Manual, Transmission::Automatic);
@@ -252,7 +258,7 @@ fn key_press(key: &KeyCode, cfg: &mut Config, quit: &mut bool, row: &mut u8, col
 					// RECS
 				}
 				(4, 1) => {
-					*editor = if *editor { false } else { true };
+					*editor = !*editor;
 				}
 				DEFINE_ITEM_POS => {
 					return Some(GameState::define_menu());

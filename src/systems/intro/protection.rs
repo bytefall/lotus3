@@ -73,7 +73,7 @@ impl<'ctx> System<'ctx> for Protection {
 		if key_pressed {
 			let prev = self
 				.input_id
-				.replace(dep.win.print(&dep.cache.font_c03, &code).show(Point::xy(150, 165)).id);
+				.replace(dep.win.print(&dep.cache.font_c03, code).show(Point::xy(150, 165)).id);
 
 			if let Some(id) = prev {
 				dep.win.remove(id);

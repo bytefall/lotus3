@@ -24,29 +24,31 @@ use crate::{
 	systems::{Cache, Input, Window},
 };
 
+struct Store {
+	bg: Index,
+	frame_st: Index,
+	frame_4r: Index,
+}
+
 pub struct Menu {
-	store: Option<(
-		Index,
-		Index,
-		Index,
-	)>,
+	store: Option<Store>,
 }
 
 impl Menu {
 	fn prepare(&mut self, win: &mut Window, arc: &Archive) -> Result<()> {
-		self.store = Some((
-			win.draw(&Sprite::from(arc.get("I16")?)).id,
-			win.paint(FRAME_SIZE_ST, |_, c| build_frame(FRAME_SIZE_ST, c)).id,
-			win.paint(FRAME_SIZE_4R, |_, c| build_frame(FRAME_SIZE_4R, c)).id,
-		));
+		self.store = Some(Store {
+			bg: win.draw(&Sprite::from(arc.get("I16")?)).id,
+			frame_st: win.paint(FRAME_SIZE_ST, |_, c| build_frame(FRAME_SIZE_ST, c)).id,
+			frame_4r: win.paint(FRAME_SIZE_4R, |_, c| build_frame(FRAME_SIZE_4R, c)).id,
+		});
 
 		Ok(())
 	}
 
 	fn show(&self, win: &mut Window, _cfg: &Config, font_c04: &Font, row: u8) {
-		let (bg, frame_st, frame_4r) = self.store.unwrap();
+		let store = self.store.as_ref().unwrap();
 
-		win.show(bg, SCREEN_START);
+		win.show(store.bg, SCREEN_START);
 
 		win.print(font_c04, "XKXCJGFJH-33").show(Point::xy(117, 56));
 		win.print(font_c04, "         -00").show(Point::xy(117, 56 + 15 * 1));
@@ -61,7 +63,7 @@ impl Menu {
 		// frame should be the last (i.e. on top of everything)
 		const COL: u8 = 1;
 
-		let frame = if row == 0 { frame_st } else { frame_4r };
+		let frame = if row == 0 { store.frame_st } else { store.frame_4r };
 		let width = win.txt_size(frame).unwrap().width;
 
 		win.show(
@@ -160,7 +162,7 @@ fn key_press(key: &KeyCode, _cfg: &mut Config, row: &mut u8, editor: &mut bool) 
 			return true;
 		}
 		(KeyCode::Return, 1, _) => {
-			*editor = if *editor { false } else { true };
+			*editor = !*editor;
 		}
 		_ => {}
 	}

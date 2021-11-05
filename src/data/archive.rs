@@ -26,7 +26,7 @@ pub struct Archive {
 impl Archive {
 	pub fn open(path: &dyn AsRef<Path>) -> Result<Archive> {
 		let file = File::open(path)
-			.wrap_err_with(|| format!("Failed to open data file \"{}\"!", path.as_ref().to_str().unwrap_or("")))?;
+			.wrap_err_with(|| format!("Failed to open \"{}\"!", path.as_ref().to_str().unwrap_or("")))?;
 
 		let mut file = BufReader::new(file);
 		file.seek(SeekFrom::Start(TABLE_OFFSET))?;
@@ -36,7 +36,8 @@ impl Archive {
 
 		loop {
 			let mut buffer = [0; 10];
-			file.read(&mut buffer)?;
+			file.read_exact(&mut buffer)
+				.wrap_err_with(|| eyre!("Failed to read items from the data file!"))?;
 
 			if buffer[0] == 0 {
 				break;
@@ -62,16 +63,16 @@ impl Archive {
 
 	pub fn get(&self, key: &str) -> Result<Vec<u8>> {
 		let item = self.items.get(&key.to_string())
-			.ok_or_else(|| eyre!("Item \"{}\" is not found in the data file!", key))?;
-
-		let mut buffer = Vec::with_capacity(item.length as usize);
-		buffer.resize(item.length as usize, 0);
+			.ok_or_else(|| eyre!("Item \"{}\" is not found!", key))?;
 
 		let mut file = self.file.borrow_mut();
 		file.seek(SeekFrom::Start(item.offset.into()))?;
-		file.read_exact(&mut buffer)?;
 
-		zip::unpack(&buffer).ok_or_else(|| eyre!("Failed to unpack item \"{}\"!", key))
+		let mut buffer = vec![0; item.length as usize];
+		file.read_exact(&mut buffer)
+			.wrap_err_with(|| eyre!("Failed to read {} byte(s) at {} for \"{}\"!", item.length, item.offset, key))?;
+
+		zip::unpack(&buffer).ok_or_else(|| eyre!("Failed to unpack \"{}\"!", key))
 	}
 
 	pub fn get_with_palette(&self, key: &str) -> Result<(Vec<u8>, Vec<u8>)> {
@@ -88,7 +89,7 @@ impl Archive {
 		let mut rest;
 
 		let size = size as usize;
-		let mut series = vec![];
+		let mut series = Vec::new();
 
 		for _ in 0..(data.len() / size) {
 			rest = data.split_off(size);

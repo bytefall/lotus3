@@ -42,8 +42,8 @@ impl CommandBatch {
 		self
 	}
 
-	pub fn paint(&mut self, target: Option<Layer>, foo: Box<PaintFn>, size: Size, pos: Point) -> &mut Self {
-		self.commands.push(Command::Paint(target, foo, size, pos));
+	pub fn paint(&mut self, target: Option<Layer>, f: Box<PaintFn>, size: Size, pos: Point) -> &mut Self {
+		self.commands.push(Command::Paint(target, f, size, pos));
 		self
 	}
 
