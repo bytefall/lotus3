@@ -1,4 +1,4 @@
-use super::{Drawable, Size, HEIGHT, WIDTH};
+use super::{Drawable, Size, SCREEN_HEIGHT, SCREEN_WIDTH};
 
 pub struct Sprite {
 	data: Vec<u8>,
@@ -9,7 +9,7 @@ impl Sprite {
 	pub fn from(data: Vec<u8>) -> Self {
 		Self {
 			data,
-			size: Size::wh(WIDTH as u32, HEIGHT as u32),
+			size: Size::wh(SCREEN_WIDTH, SCREEN_HEIGHT),
 		}
 	}
 

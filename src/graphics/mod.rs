@@ -1,5 +1,6 @@
-pub const WIDTH: usize = 320;
-pub const HEIGHT: usize = 200;
+pub const SCREEN_WIDTH: u32 = 320;
+pub const SCREEN_HEIGHT: u32 = 200;
+pub const SCREEN_BPP: usize = 4;
 pub const SCREEN_START: Point = Point::xy(0, 0);
 
 #[derive(Clone)]

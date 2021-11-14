@@ -1,7 +1,5 @@
 #[rustfmt::skip]
-use crate::graphics::Point;
-
-const PIXEL_SIZE: usize = 4;
+use crate::graphics::{Point, SCREEN_BPP};
 
 pub struct Bitmap {
 	data: Vec<u8>,
@@ -27,12 +25,12 @@ impl Bitmap {
 		let yy = point.y as usize;
 
 		for y in yy..yy + height {
-			let mut offset = y * pitch + xx * PIXEL_SIZE;
+			let mut offset = y * pitch + xx * SCREEN_BPP;
 
 			for _ in 0..repeat {
 				for o in OP_CODES[*data.next().unwrap() as usize] {
 					match o {
-						Code::Skip(num) => offset += num * PIXEL_SIZE,
+						Code::Skip(num) => offset += num * SCREEN_BPP,
 						Code::Draw(num) => {
 							for _ in 0..*num {
 								let val = *data.next().unwrap() as usize * 3;
@@ -44,7 +42,7 @@ impl Bitmap {
 									buffer[offset + 3] = palette[val + 0] << 2; // r
 								}
 
-								offset += PIXEL_SIZE;
+								offset += SCREEN_BPP;
 							}
 						}
 					}

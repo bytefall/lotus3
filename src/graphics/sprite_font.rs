@@ -1,4 +1,4 @@
-use super::{Printable, Rgb};
+use super::{Printable, Rgb, SCREEN_BPP};
 
 const CHARS: &str = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ.()";
 
@@ -53,7 +53,7 @@ impl Printable for SpriteFont {
 							continue;
 						}
 
-						let offset = y * pitch + x * 4;
+						let offset = y * pitch + x * SCREEN_BPP;
 
 						buffer[offset + 0] = 255;
 						buffer[offset + 1] = PALETTE[val].b << 2;

@@ -7,7 +7,7 @@ use crate::{
 		script::{ALL, BACK, FRONT, CommandSequence},
 		state::{GameState, GameFlow},
 	},
-	graphics::{Point, PaintCanvas, PaintFn, Size, Sprite, SCREEN_START, WIDTH, HEIGHT},
+	graphics::{Point, PaintCanvas, PaintFn, Size, Sprite, SCREEN_START, SCREEN_WIDTH, SCREEN_HEIGHT},
 	systems::{Input, Window},
 };
 
@@ -122,7 +122,7 @@ fn show_magnetic_fields(dep: &mut Dependencies) -> Result<()> {
 fn show_credits(dep: &mut Dependencies) -> Result<()> {
 	const CREDITS_FADE_IN_TIMEOUT: Option<u16> = Some(2000);
 	const CREDITS_FADE_OUT_TIMEOUT: Option<u16> = Some(1000);
-	const CAR_SIZE: Size = Size::wh(WIDTH as u32, HEIGHT as u32);
+	const CAR_SIZE: Size = Size::wh(SCREEN_WIDTH, SCREEN_HEIGHT);
 
 	let (q19, pal) = dep.arc.get_with_palette("Q19")?;
 
@@ -221,18 +221,18 @@ fn show_credits(dep: &mut Dependencies) -> Result<()> {
 }
 
 fn draw_a_car(data: Vec<u8>, step: usize) -> Box<PaintFn> {
-	const SCREEN_WIDTH: usize = 336; // NB: not 320!
+	const WIDTH: usize = 336; // NB: not 320!
 
 	let cx = 256 + (36 - step) * 512;
 	let di = 160
-		- ((((SCREEN_WIDTH * 170) + 224) / cx) >> 1) + (SCREEN_WIDTH * 64)
-		- (((((SCREEN_WIDTH * 118) + 288) / cx) * (SCREEN_WIDTH * 32 + 170)) >> 16) * SCREEN_WIDTH;
+		- ((((WIDTH * 170) + 224) / cx) >> 1) + (WIDTH * 64)
+		- (((((WIDTH * 118) + 288) / cx) * (WIDTH * 32 + 170)) >> 16) * WIDTH;
 
-	let xx = di % SCREEN_WIDTH;
-	let mut y = di / SCREEN_WIDTH;
+	let xx = di % WIDTH;
+	let mut y = di / WIDTH;
 
 	Box::new(move |pal: &[u8], c: &mut dyn PaintCanvas| {
-		for row in (0..SCREEN_WIDTH * 118).step_by(cx) {
+		for row in (0..WIDTH * 118).step_by(cx) {
 			let offset = (row >> 8) * 224;
 			let mut x = xx;
 	

@@ -37,8 +37,8 @@ where
 
 pub struct WindowConfig {
 	pub title: &'static str,
-	pub width: usize,
-	pub height: usize,
+	pub width: u32,
+	pub height: u32,
 }
 
 pub struct Window {
@@ -391,7 +391,7 @@ impl Window {
 	}
 }
 
-const SCREEN_SCALE: u8 = 2;
+const SCREEN_SCALE: u32 = 2;
 
 impl<'ctx> System<'ctx> for Window {
 	type Dependencies = &'ctx WindowConfig;
@@ -401,7 +401,7 @@ impl<'ctx> System<'ctx> for Window {
 		let video = context.video().unwrap();
 
 		let window = video
-			.window(cfg.title, cfg.width as u32 * SCREEN_SCALE as u32, cfg.height as u32 * SCREEN_SCALE as u32)
+			.window(cfg.title, cfg.width * SCREEN_SCALE, cfg.height * SCREEN_SCALE)
 			.position_centered()
 			.build()?;
 
