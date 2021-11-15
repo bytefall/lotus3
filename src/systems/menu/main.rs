@@ -18,7 +18,7 @@ use crate::{
 		options::{Config, Acceleration, Course, Transmission, Race},
 		state::{GameState, GameFlow, Screen},
 	},
-	graphics::{Point, Sprite, SCREEN_START, font::Font},
+	graphics::{Sprite, SCREEN_START, font::Font},
 	systems::{Cache, Input, Window},
 };
 
@@ -85,24 +85,24 @@ impl Menu {
 
 		win.show(store.bg, SCREEN_START);
 
-		win.show(*store.trans.get(cfg.p1_trans as usize).unwrap(), Point::xy(6, 52));
-		win.show(*store.accel.get(cfg.p1_accel as usize).unwrap(), Point::xy(6, 91));
-		win.show(*store.trans.get(cfg.p2_trans as usize).unwrap(), Point::xy(214, 52));
-		win.show(*store.accel.get(cfg.p2_accel as usize).unwrap(), Point::xy(214, 91));
-		win.show(*store.race.get(cfg.race as usize).unwrap(), Point::xy(110, 52));
-		win.show(*store.course.get(cfg.course as usize).unwrap(), Point::xy(110, 91));
-		win.show(*store.player.get(cfg.players_num as usize - 1).unwrap(), Point::xy(110, 130));
+		win.show(*store.trans.get(cfg.p1_trans as usize).unwrap(), (6, 52).into());
+		win.show(*store.accel.get(cfg.p1_accel as usize).unwrap(), (6, 91).into());
+		win.show(*store.trans.get(cfg.p2_trans as usize).unwrap(), (214, 52).into());
+		win.show(*store.accel.get(cfg.p2_accel as usize).unwrap(), (214, 91).into());
+		win.show(*store.race.get(cfg.race as usize).unwrap(), (110, 52).into());
+		win.show(*store.course.get(cfg.course as usize).unwrap(), (110, 91).into());
+		win.show(*store.player.get(cfg.players_num as usize - 1).unwrap(), (110, 130).into());
 
-		win.print(font_c04, &cfg.p1_name).show(Point::xy(13, 21));
-		win.print(font_c04, &cfg.p2_name).show(Point::xy(221, 21));
-		win.print(font_c04, &cfg.code).show(Point::xy(117, 177));
+		win.print(font_c04, &cfg.p1_name).show((13, 21).into());
+		win.print(font_c04, &cfg.p2_name).show((221, 21).into());
+		win.print(font_c04, &cfg.code).show((117, 177).into());
 
 		// frame should be the last (i.e. on top of everything)
 		let size = win.txt_size(store.frame).unwrap();
-		let rect = Point::xy(
+		let rect = (
 			(FRAME_OFFSET.0 + col as u32 * (size.width - FRAME_BORDER)) as i32,
 			(FRAME_OFFSET.1 + row as u32 * (size.height - FRAME_BORDER)) as i32,
-		);
+		).into();
 
 		win.show(store.frame, rect);
 	}

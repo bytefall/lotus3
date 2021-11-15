@@ -8,7 +8,7 @@ use crate::{
 		input::KeyCode,
 		state::{GameFlow, GameState},
 	},
-	graphics::{Point, Size, Sprite, SCREEN_START},
+	graphics::{Size, Sprite, SCREEN_START},
 	systems::{Cache, Input, Window},
 };
 
@@ -72,7 +72,7 @@ impl<'ctx> System<'ctx> for Protection {
 		if key_pressed {
 			let prev = self
 				.input_id
-				.replace(dep.win.print(&dep.cache.font_c03, code).show(Point::xy(150, 165)).id);
+				.replace(dep.win.print(&dep.cache.font_c03, code).show((150, 165).into()).id);
 
 			if let Some(id) = prev {
 				dep.win.remove(id);
@@ -107,9 +107,9 @@ fn show_protection_screen(dep: &mut Dependencies) -> Result<()> {
 	dep.win.clear();
 	dep.win.palette = pal;
 	dep.win.draw(&Sprite::from(i21)).show(SCREEN_START);
-	dep.win.draw(&helmets.0).show(Point::xy(141, 13));
-	dep.win.draw(&helmets.1).show(Point::xy(141, 73));
-	dep.win.print(&dep.cache.font_c03, "ENTER CODE FOR WINDOW 47").show(Point::xy(60, 140));
+	dep.win.draw(&helmets.0).show((141, 13).into());
+	dep.win.draw(&helmets.1).show((141, 73).into());
+	dep.win.print(&dep.cache.font_c03, "ENTER CODE FOR WINDOW 47").show((60, 140).into());
 	dep.win.present();
 
 	Ok(())

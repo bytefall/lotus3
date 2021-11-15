@@ -1,4 +1,4 @@
-use super::{Bitmap, Printable, Point};
+use super::{Bitmap, Printable};
 
 pub struct Font {
 	char_set: CharSet,
@@ -32,7 +32,7 @@ impl Printable for Font {
 			}
 
 			if let Some(i) = self.char_set.chars.find(c) {
-				self.bitmap.draw(i, Point::xy(xx as i32, yy as i32), buffer, pitch, palette);
+				self.bitmap.draw(i, (xx as i32, yy as i32).into(), buffer, pitch, palette);
 
 				xx += self.char_set.h_space;
 			}

@@ -75,14 +75,14 @@ fn show_gremlin(dep: &mut Dependencies) -> Result<()> {
 	for i in &[0usize, 1, 2, 3, 2, 1, 0] {
 		dep.cmd.batch(Some(100))
 			.clear(FRONT)
-			.draw(FRONT, Sprite::from(q01.get(*i).unwrap().to_vec()).with_size(SPLASH_SIZE), Point::xy(112, 85))
+			.draw(FRONT, Sprite::from(q01.get(*i).unwrap().to_vec()).with_size(SPLASH_SIZE), (112, 85).into())
 			.present();
 	}
 
 	for i in &[4usize, 5, 6, 7, 6, 5, 4] {
 		dep.cmd.batch(Some(100))
 			.clear(FRONT)
-			.draw(FRONT, Sprite::from(q01.get(*i).unwrap().to_vec()).with_size(SPLASH_SIZE), Point::xy(144, 110))
+			.draw(FRONT, Sprite::from(q01.get(*i).unwrap().to_vec()).with_size(SPLASH_SIZE), (144, 110).into())
 			.present();
 	}
 
@@ -134,51 +134,51 @@ fn show_credits(dep: &mut Dependencies) -> Result<()> {
 
 	dep.cmd.batch(CREDITS_FADE_IN_TIMEOUT)
 		.clear(FRONT)
-		.print(FRONT, "A GAME", Point::xy(118, 43))
-		.print(FRONT, "BY", Point::xy(146, 67))
-		.print(FRONT, "ANDREW MORRIS", Point::xy(69, 91))
-		.print(FRONT, "AND", Point::xy(139, 115))
-		.print(FRONT, "SHAUN SOUTHERN", Point::xy(62, 139))
+		.print(FRONT, "A GAME", (118, 43).into())
+		.print(FRONT, "BY", (146, 67).into())
+		.print(FRONT, "ANDREW MORRIS", (69, 91).into())
+		.print(FRONT, "AND", (139, 115).into())
+		.print(FRONT, "SHAUN SOUTHERN", (62, 139).into())
 		.fade_in(FRONT);
 
 	dep.cmd.batch(CREDITS_FADE_OUT_TIMEOUT)
 		.fade_out(FRONT);
 
 	dep.cmd.batch(CREDITS_FADE_IN_TIMEOUT)
-		.print(FRONT, "LEVEL DESIGN", Point::xy(76, 67))
-		.print(FRONT, "BY", Point::xy(146, 91))
-		.print(FRONT, "PETER LIGGETT", Point::xy(69, 115))
+		.print(FRONT, "LEVEL DESIGN", (76, 67).into())
+		.print(FRONT, "BY", (146, 91).into())
+		.print(FRONT, "PETER LIGGETT", (69, 115).into())
 		.fade_in(FRONT);
 
 	dep.cmd.batch(CREDITS_FADE_OUT_TIMEOUT)
 		.fade_out(FRONT);
 
 	dep.cmd.batch(CREDITS_FADE_IN_TIMEOUT)
-		.print(FRONT, "MUSIC", Point::xy(125, 67))
-		.print(FRONT, "BY", Point::xy(146, 91))
-		.print(FRONT, "PATRICK PHELAN", Point::xy(62, 115))
+		.print(FRONT, "MUSIC", (125, 67).into())
+		.print(FRONT, "BY", (146, 91).into())
+		.print(FRONT, "PATRICK PHELAN", (62, 115).into())
 		.fade_in(FRONT);
 
 	dep.cmd.batch(CREDITS_FADE_OUT_TIMEOUT)
 		.fade_out(FRONT);
 
 	dep.cmd.batch(CREDITS_FADE_IN_TIMEOUT)
-		.print(FRONT, "PC CONVERSION", Point::xy(69, 43))
-		.print(FRONT, "BY", Point::xy(146, 67))
-		.print(FRONT, "JON MEDHURST FOR", Point::xy(48, 91))
-		.print(FRONT, "CYGNUS SOFTWARE", Point::xy(55, 115))
-		.print(FRONT, "ENGINEERING LTD.", Point::xy(52, 139))
+		.print(FRONT, "PC CONVERSION", (69, 43).into())
+		.print(FRONT, "BY", (146, 67).into())
+		.print(FRONT, "JON MEDHURST FOR", (48, 91).into())
+		.print(FRONT, "CYGNUS SOFTWARE", (55, 115).into())
+		.print(FRONT, "ENGINEERING LTD.", (52, 139).into())
 		.fade_in(FRONT);
 
 	dep.cmd.batch(CREDITS_FADE_OUT_TIMEOUT)
 		.fade_out(FRONT);
 
 	dep.cmd.batch(CREDITS_FADE_IN_TIMEOUT)
-		.print(FRONT, "COPYRIGHT 1993", Point::xy(62, 43))
-		.print(FRONT, "MAGNETIC FIELDS", Point::xy(55, 67))
-		.print(FRONT, "(SOFTWARE DESIGN) LTD.", Point::xy(10, 91))
-		.print(FRONT, "GREMLIN GRAPHICS", Point::xy(48, 115))
-		.print(FRONT, "SOFTWARE LTD.", Point::xy(73, 139))
+		.print(FRONT, "COPYRIGHT 1993", (62, 43).into())
+		.print(FRONT, "MAGNETIC FIELDS", (55, 67).into())
+		.print(FRONT, "(SOFTWARE DESIGN) LTD.", (10, 91).into())
+		.print(FRONT, "GREMLIN GRAPHICS", (48, 115).into())
+		.print(FRONT, "SOFTWARE LTD.", (73, 139).into())
 		.fade_in(FRONT);
 
 	dep.cmd.batch(CREDITS_FADE_OUT_TIMEOUT)
@@ -241,7 +241,7 @@ fn draw_a_car(data: Vec<u8>, step: usize) -> Box<PaintFn> {
 	
 				if px != 0xFF {
 					c.color(pal[px * 3 + 0] << 2, pal[px * 3 + 1] << 2, pal[px * 3 + 2] << 2, 255);
-					c.point(Point::xy(x as i32, y as i32));
+					c.point((x as i32, y as i32).into());
 				}
 	
 				x += 1;

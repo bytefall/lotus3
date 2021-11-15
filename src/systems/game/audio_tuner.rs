@@ -4,7 +4,7 @@ use crate::{
 	data::Archive,
 	ecs::system::System,
 	game::state::{GameFlow, GameState},
-	graphics::{Point, Size, Sprite, SCREEN_START},
+	graphics::{Size, Sprite, SCREEN_START},
 	systems::{Input, Timer, Window},
 };
 
@@ -53,12 +53,12 @@ impl<'ctx> System<'ctx> for AudioTuner {
 
 			for _ in 0..7 {
 				dep.win
-					.paint(Size::wh(5, 1), |_, c| { c.color(162, 0, 0, 255); c.line(Point::xy(0, 0), Point::xy(5, 0)); })
-					.show(Point::xy(168, yy));
+					.paint(Size::wh(5, 1), |_, c| { c.color(162, 0, 0, 255); c.line((0, 0).into(), (5, 0).into()); })
+					.show((168, yy).into());
 				yy += 2;
 			}
 
-			//dep.win.print(&dep.cache.font_c06, "01:02:03").show(Point::xy(60, 140));
+			//dep.win.print(&dep.cache.font_c06, "01:02:03").show((60, 140).into());
 
 			dep.win.fade_in();
 		}

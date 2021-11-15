@@ -1,4 +1,4 @@
-use crate::graphics::{PaintCanvas, Point, Size};
+use crate::graphics::{PaintCanvas, Size};
 
 const MENU_ITEM_SIZE: Size = Size::wh(104, 26);
 
@@ -14,61 +14,61 @@ fn build_frame(size: Size, c: &mut dyn PaintCanvas) {
 	// maroon
 	c.color(93, 0, 0, 255);
 	// upper left
-	c.point(Point::xy(2, 1));
-	c.point(Point::xy(1, 2));
-	c.point(Point::xy(3, 2));
-	c.point(Point::xy(2, 3));
+	c.point((2, 1).into());
+	c.point((1, 2).into());
+	c.point((3, 2).into());
+	c.point((2, 3).into());
 	// bottom left
-	c.point(Point::xy(2, size.height as i32 - 4));
-	c.point(Point::xy(1, size.height as i32 - 3));
-	c.point(Point::xy(3, size.height as i32 - 3));
-	c.point(Point::xy(2, size.height as i32 - 2));
+	c.point((2, size.height as i32 - 4).into());
+	c.point((1, size.height as i32 - 3).into());
+	c.point((3, size.height as i32 - 3).into());
+	c.point((2, size.height as i32 - 2).into());
 	// upper right
-	c.point(Point::xy(size.width as i32 - 3, 1));
-	c.point(Point::xy(size.width as i32 - 4, 2));
-	c.point(Point::xy(size.width as i32 - 2, 2));
-	c.point(Point::xy(size.width as i32 - 3, 3));
+	c.point((size.width as i32 - 3, 1).into());
+	c.point((size.width as i32 - 4, 2).into());
+	c.point((size.width as i32 - 2, 2).into());
+	c.point((size.width as i32 - 3, 3).into());
 	// bottom right
-	c.point(Point::xy(size.width as i32 - 3, size.height as i32 - 4));
-	c.point(Point::xy(size.width as i32 - 4, size.height as i32 - 3));
-	c.point(Point::xy(size.width as i32 - 2, size.height as i32 - 3));
-	c.point(Point::xy(size.width as i32 - 3, size.height as i32 - 2));
+	c.point((size.width as i32 - 3, size.height as i32 - 4).into());
+	c.point((size.width as i32 - 4, size.height as i32 - 3).into());
+	c.point((size.width as i32 - 2, size.height as i32 - 3).into());
+	c.point((size.width as i32 - 3, size.height as i32 - 2).into());
 
 	// red
 	c.color(162, 0, 0, 255);
-	c.point(Point::xy(2, 2)); // upper left
-	c.point(Point::xy(size.width as i32 - 3, 2)); // upper right
-	c.point(Point::xy(size.width as i32 - 3, size.height as i32 - 3)); // bottom right
-	c.point(Point::xy(2, size.height as i32 - 3)); // bottom left
+	c.point((2, 2).into()); // upper left
+	c.point((size.width as i32 - 3, 2).into()); // upper right
+	c.point((size.width as i32 - 3, size.height as i32 - 3).into()); // bottom right
+	c.point((2, size.height as i32 - 3).into()); // bottom left
 
-	c.line(Point::xy(1, 3), Point::xy(1, size.height as i32 - 4)); // left vertical
-	c.line(Point::xy(3, 1), Point::xy(size.width as i32 - 4, 1)); // upper horizontal
-	c.line(Point::xy(size.width as i32 - 2, 3), Point::xy(size.width as i32 - 2, size.height as i32 - 4)); // right vertical
-	c.line(Point::xy(3, size.height as i32 - 2), Point::xy(size.width as i32 - 4, size.height as i32 - 2)); // bottom horizontal
+	c.line((1, 3).into(), (1, size.height as i32 - 4).into()); // left vertical
+	c.line((3, 1).into(), (size.width as i32 - 4, 1).into()); // upper horizontal
+	c.line((size.width as i32 - 2, 3).into(), (size.width as i32 - 2, size.height as i32 - 4).into()); // right vertical
+	c.line((3, size.height as i32 - 2).into(), (size.width as i32 - 4, size.height as i32 - 2).into()); // bottom horizontal
 
 	// black
 	c.color(0, 0, 0, 255);
 	// upper left
-	c.point(Point::xy(1, 1));
-	c.point(Point::xy(3, 3));
+	c.point((1, 1).into());
+	c.point((3, 3).into());
 	// upper right
-	c.point(Point::xy(size.width as i32 - 2, 1));
-	c.point(Point::xy(size.width as i32 - 4, 3));
+	c.point((size.width as i32 - 2, 1).into());
+	c.point((size.width as i32 - 4, 3).into());
 	// bottom right
-	c.point(Point::xy(size.width as i32 - 4, size.height as i32 - 4));
-	c.point(Point::xy(size.width as i32 - 2, size.height as i32 - 2));
+	c.point((size.width as i32 - 4, size.height as i32 - 4).into());
+	c.point((size.width as i32 - 2, size.height as i32 - 2).into());
 	// bottom left
-	c.point(Point::xy(3, size.height as i32 - 4));
-	c.point(Point::xy(1, size.height as i32 - 2));
+	c.point((3, size.height as i32 - 4).into());
+	c.point((1, size.height as i32 - 2).into());
 
-	c.line(Point::xy(0, 2), Point::xy(0, size.height as i32 - 3)); // left 1
-	c.line(Point::xy(2, 4), Point::xy(2, size.height as i32 - 5)); // left 2
-	c.line(Point::xy(2, 0), Point::xy(size.width as i32 - 3, 0)); // top 1
-	c.line(Point::xy(4, 2), Point::xy(size.width as i32 - 5, 2)); // top 2
-	c.line(Point::xy(size.width as i32 - 3, 4), Point::xy(size.width as i32 - 3, size.height as i32 - 5)); // right 1
-	c.line(Point::xy(size.width as i32 - 1, 2), Point::xy(size.width as i32 - 1, size.height as i32 - 3)); // right 2
-	c.line(Point::xy(4, size.height as i32 - 3), Point::xy(size.width as i32 - 5, size.height as i32 - 3)); // bottom 1
-	c.line(Point::xy(2, size.height as i32 - 1), Point::xy(size.width as i32 - 3, size.height as i32 - 1)); // bottom 2
+	c.line((0, 2).into(), (0, size.height as i32 - 3).into()); // left 1
+	c.line((2, 4).into(), (2, size.height as i32 - 5).into()); // left 2
+	c.line((2, 0).into(), (size.width as i32 - 3, 0).into()); // top 1
+	c.line((4, 2).into(), (size.width as i32 - 5, 2).into()); // top 2
+	c.line((size.width as i32 - 3, 4).into(), (size.width as i32 - 3, size.height as i32 - 5).into()); // right 1
+	c.line((size.width as i32 - 1, 2).into(), (size.width as i32 - 1, size.height as i32 - 3).into()); // right 2
+	c.line((4, size.height as i32 - 3).into(), (size.width as i32 - 5, size.height as i32 - 3).into()); // bottom 1
+	c.line((2, size.height as i32 - 1).into(), (size.width as i32 - 3, size.height as i32 - 1).into()); // bottom 2
 }
 
 const START_ITEM_POS: (u8, u8) = (0, 1);

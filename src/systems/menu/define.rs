@@ -20,7 +20,7 @@ use crate::{
 		options::Config,
 		state::{GameFlow, GameState, Screen},
 	},
-	graphics::{font::Font, Point, Sprite, SCREEN_START},
+	graphics::{font::Font, Sprite, SCREEN_START},
 	systems::{Cache, Input, Window},
 };
 
@@ -50,15 +50,15 @@ impl Menu {
 
 		win.show(store.bg, SCREEN_START);
 
-		win.print(font_c04, "XKXCJGFJH-33").show(Point::xy(117, 56));
-		win.print(font_c04, "         -00").show(Point::xy(117, 56 + 15 * 1));
-		win.print(font_c04, "         -00").show(Point::xy(117, 56 + 15 * 2));
-		win.print(font_c04, "         -00").show(Point::xy(117, 56 + 15 * 3));
-		win.print(font_c04, "         -00").show(Point::xy(117, 56 + 15 * 4));
-		win.print(font_c04, "         -00").show(Point::xy(117, 56 + 15 * 5));
-		win.print(font_c04, "         -00").show(Point::xy(117, 56 + 15 * 6));
-		win.print(font_c04, "         -00").show(Point::xy(117, 56 + 15 * 7));
-		win.print(font_c04, "         -00").show(Point::xy(117, 56 + 15 * 8));
+		win.print(font_c04, "XKXCJGFJH-33").show((117, 56).into());
+		win.print(font_c04, "         -00").show((117, 56 + 15 * 1).into());
+		win.print(font_c04, "         -00").show((117, 56 + 15 * 2).into());
+		win.print(font_c04, "         -00").show((117, 56 + 15 * 3).into());
+		win.print(font_c04, "         -00").show((117, 56 + 15 * 4).into());
+		win.print(font_c04, "         -00").show((117, 56 + 15 * 5).into());
+		win.print(font_c04, "         -00").show((117, 56 + 15 * 6).into());
+		win.print(font_c04, "         -00").show((117, 56 + 15 * 7).into());
+		win.print(font_c04, "         -00").show((117, 56 + 15 * 8).into());
 
 		// frame should be the last (i.e. on top of everything)
 		const COL: u8 = 1;
@@ -68,10 +68,10 @@ impl Menu {
 
 		win.show(
 			frame,
-			Point::xy(
+			(
 				(FRAME_OFFSET.0 + COL as u32 * (width - FRAME_BORDER)) as i32,
 				(FRAME_OFFSET.1 + row as u32 * (FRAME_SIZE_ST.height - FRAME_BORDER)) as i32,
-			),
+			).into(),
 		);
 	}
 }

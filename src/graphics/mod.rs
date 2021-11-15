@@ -15,6 +15,12 @@ impl Point {
 	}
 }
 
+impl From<(i32, i32)> for Point {
+	fn from((x, y): (i32, i32)) -> Self {
+		Point::xy(x, y)
+	}
+}
+
 pub struct Rgb {
 	pub r: u8,
 	pub g: u8,
