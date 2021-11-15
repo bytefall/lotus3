@@ -61,8 +61,7 @@ impl<'ctx> System<'ctx> for Protection {
 
 						return Ok(());
 					}
-					KeyCode::Backspace => {
-						code.pop();
+					KeyCode::Backspace if code.pop().is_some() => {
 						key_pressed = true;
 					}
 					_ => {}
