@@ -2,7 +2,7 @@
 name = "lotus3"
 version = "0.1.0"
 authors = ["Oleg Scherbakov <scherbakov.oleg@gmail.com>"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 eyre = "0.6.5"
