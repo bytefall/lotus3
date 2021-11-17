@@ -80,7 +80,7 @@ impl Menu {
 		Ok(())
 	}
 
-	fn show(&self, win: &mut Window, cfg: &Config, font_c04: &Font, row: u8, col: u8) {
+	fn show(&self, win: &mut Window, cfg: &Config, font_c03: &Font, font_c04: &Font, row: u8, col: u8) {
 		let store = self.store.as_ref().unwrap();
 
 		win.show(store.bg, SCREEN_START);
@@ -95,7 +95,7 @@ impl Menu {
 
 		win.print(font_c04, &cfg.p1_name).show((13, 21).into());
 		win.print(font_c04, &cfg.p2_name).show((221, 21).into());
-		win.print(font_c04, &cfg.code).show((117, 177).into());
+		win.print(font_c03, &cfg.code).show((117, 177).into());
 
 		// frame should be the last (i.e. on top of everything)
 		let size = win.txt_size(store.frame).unwrap();
@@ -142,7 +142,7 @@ impl<'ctx> System<'ctx> for Menu {
 			dep.win.clear();
 
 			self.prepare(dep.win, dep.arc)?;
-			self.show(dep.win, dep.cfg, &dep.cache.font_c04, *row, *col);
+			self.show(dep.win, dep.cfg, &dep.cache.font_c03, &dep.cache.font_c04, *row, *col);
 
 			dep.win.fade_in();
 		}
@@ -177,7 +177,7 @@ impl<'ctx> System<'ctx> for Menu {
 
 		if (*row, *col, *editor) != prev_state || dep.cfg != &prev_cfg {
 			dep.win.clear();
-			self.show(dep.win, dep.cfg, &dep.cache.font_c04, *row, *col);
+			self.show(dep.win, dep.cfg, &dep.cache.font_c03, &dep.cache.font_c04, *row, *col);
 			dep.win.present();
 		}
 
