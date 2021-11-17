@@ -35,12 +35,10 @@ impl Bitmap {
 							for _ in 0..*num {
 								let val = *data.next().unwrap() as usize * 3;
 
-								if val != 0 {
-									buffer[offset + 0] = 255; // a
-									buffer[offset + 1] = palette[val + 2] << 2; // b
-									buffer[offset + 2] = palette[val + 1] << 2; // g
-									buffer[offset + 3] = palette[val + 0] << 2; // r
-								}
+								buffer[offset + 0] = 255; // a
+								buffer[offset + 1] = palette[val + 2] << 2; // b
+								buffer[offset + 2] = palette[val + 1] << 2; // g
+								buffer[offset + 3] = palette[val + 0] << 2; // r
 
 								offset += SCREEN_BPP;
 							}
