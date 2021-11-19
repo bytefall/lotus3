@@ -41,7 +41,7 @@ fn main() -> eyre::Result<()> {
 		.inject(arc)
 		.inject_mut(cfg)
 		.inject_mut(CommandSequence::new())
-		.inject_mut(GameFlow::new(GameState::Protection(String::new())))
+		.inject_mut(GameFlow::new(GameState::Protection))
 		.system(Timer::bind())?
 		.system(Window::bind())?
 		.system(Input::bind())?

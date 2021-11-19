@@ -24,29 +24,31 @@ derive_dependencies_from! {
 
 pub struct Protection {
 	input_id: Option<Index>,
+	code: String,
 }
 
 impl<'ctx> System<'ctx> for Protection {
 	type Dependencies = Dependencies<'ctx>;
 
 	fn create(_: Self::Dependencies) -> Result<Self> {
-		Ok(Self { input_id: None })
+		Ok(Self{
+			input_id: None,
+			code: String::new(),
+		})
 	}
 
 	fn update(&mut self, mut dep: Self::Dependencies) -> Result<()> {
-		let code = if let GameState::Protection(code) = &mut dep.flow.state {
-			code
-		} else {
+		if dep.flow.state != GameState::Protection {
 			return Ok(());
-		};
+		}
 
 		let mut key_pressed = false;
 
 		for key in &dep.input.keys {
 			match key.to_char() {
 				Some(c) => {
-					if code.len() < 3 {
-						code.push(c);
+					if self.code.len() < 3 {
+						self.code.push(c);
 						key_pressed = true;
 					}
 				}
@@ -61,7 +63,7 @@ impl<'ctx> System<'ctx> for Protection {
 
 						return Ok(());
 					}
-					KeyCode::Backspace if code.pop().is_some() => {
+					KeyCode::Backspace if self.code.pop().is_some() => {
 						key_pressed = true;
 					}
 					_ => {}
@@ -72,7 +74,7 @@ impl<'ctx> System<'ctx> for Protection {
 		if key_pressed {
 			let prev = self
 				.input_id
-				.replace(dep.win.print(&dep.cache.font_c03, code).show((150, 165).into()).id);
+				.replace(dep.win.print(&dep.cache.font_c03, &self.code).show((150, 165).into()).id);
 
 			if let Some(id) = prev {
 				dep.win.remove(id);

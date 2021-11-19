@@ -20,7 +20,7 @@ impl GameFlow {
 
 #[derive(PartialEq)]
 pub enum GameState {
-	Protection(String),
+	Protection,
 	Intro,
 	Menu(Screen),
 	ModelSelect,
