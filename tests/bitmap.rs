@@ -1,20 +1,16 @@
-extern crate lotus3;
-extern crate md5;
-
+use lotus3::data::Archive;
 use lotus3::graphics::decode;
-
-mod misc;
-
-use crate::misc::get_data;
 
 macro_rules! bitmap {
 	($($name:ident[$hash:expr]($key:expr, $a:expr, $b:expr);)*) => {
 		$(
 			#[test]
 			fn $name() {
+				let data = Archive::open(&lotus3::ARCHIVE_FILE_NAME).unwrap().get($key).unwrap();
+
 				assert_eq!(
 					$hash,
-					format!("{:x}", md5::compute(&decode(get_data($key), $a, $b)))
+					format!("{:x}", md5::compute(&decode(data, $a, $b)))
 				);
 			}
 		)*

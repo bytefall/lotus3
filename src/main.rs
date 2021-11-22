@@ -29,7 +29,7 @@ mod systems;
 fn main() -> eyre::Result<()> {
 	color_eyre::install()?;
 
-	let arc = Archive::open(&"lotus.dat")?;
+	let arc = Archive::open(&lotus3::ARCHIVE_FILE_NAME)?;
 	let cfg = Config::new();
 
 	let mut ctx = ContextBuilder::new()
