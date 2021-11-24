@@ -1,4 +1,4 @@
-use super::{Printable, Rgb, SCREEN_BPP};
+use super::{Color, Printable, SCREEN_BPP};
 
 const CHARS: &str = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ.()";
 
@@ -8,11 +8,11 @@ const HEIGHT: usize = 18;
 const HORIZONTAL_SPACE: usize = 14;
 const VERTICAL_SPACE: usize = 24;
 
-const PALETTE: &[Rgb] = &[
-	Rgb::from(0, 0, 0),
-	Rgb::from(48, 48, 48),
-	Rgb::from(32, 32, 32),
-	Rgb::from(0, 0, 0),
+const PALETTE: &[Color] = &[
+	Color::rgb(0, 0, 0),
+	Color::rgb(48, 48, 48),
+	Color::rgb(32, 32, 32),
+	Color::rgb(0, 0, 0),
 ];
 
 pub struct SpriteFont {

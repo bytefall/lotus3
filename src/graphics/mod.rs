@@ -21,15 +21,21 @@ impl From<(i32, i32)> for Point {
 	}
 }
 
-pub struct Rgb {
+pub struct Color {
 	pub r: u8,
 	pub g: u8,
 	pub b: u8,
 }
 
-impl Rgb {
-	pub const fn from(r: u8, g: u8, b: u8) -> Self {
-		Rgb { r, g, b }
+impl Color {
+	pub const fn rgb(r: u8, g: u8, b: u8) -> Self {
+		Self { r, g, b }
+	}
+}
+
+impl From<(u8, u8, u8)> for Color {
+	fn from((r, g, b): (u8, u8, u8)) -> Self {
+		Self::rgb(r, g, b)
 	}
 }
 
