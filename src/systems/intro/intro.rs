@@ -271,24 +271,21 @@ fn show_magazine(dep: &mut Dependencies) -> Result<()> {
 	const VIDEO_SIZE: Size = Size::wh(160, 112);
 	const VIDEO_POS: Point = Point::xy(136, 38);
 
-	let (v32, mut pal) = dep.arc.get_with_palette("V32")?;
+	let (v32, pal) = dep.arc.get_with_palette("V32")?;
 
 	dep.cmd.batch(None)
 		.clear(ALL)
 		.palette(pal.clone())
 		.draw(BACK, Sprite::from(v32), SCREEN_START);
 
-	fn get_with_leading_pal(arc: &Archive, key: &str, pal: &mut [u8]) -> Result<Vec<u8>> {
-		let mut vpal = arc.get(key)?;
-		let vdat = vpal.split_off(720);
+	fn get_with_leading_pal(arc: &Archive, key: &str, pal: &[u8]) -> Result<(Vec<u8>, Vec<u8>)> {
+		let mut tmp = arc.get(key)?;
+		let dat = tmp.split_off(720);
 
-		let mut iter = pal.iter_mut().skip(16 * 3);
+		let mut pal = pal.to_vec();
+		let _ = pal.splice(16 * 3.., tmp);
 
-		for b in &vpal {
-			*iter.next().unwrap() = *b;
-		}
-
-		Ok(vdat)
+		Ok((dat, pal))
 	}
 
 	const KEYS: [&str; 41] = [
@@ -299,12 +296,12 @@ fn show_magazine(dep: &mut Dependencies) -> Result<()> {
 	];
 
 	for key in KEYS.iter() {
-		let dat = get_with_leading_pal(dep.arc, key, &mut pal)?;
+		let (vxx, pal) = get_with_leading_pal(dep.arc, key, &pal)?;
 
 		let b = dep.cmd.batch(Some(100))
-			.palette(pal.clone())
+			.palette(pal)
 			.clear(FRONT)
-			.draw(FRONT, Sprite::from(dat).with_size(VIDEO_SIZE), VIDEO_POS);
+			.draw(FRONT, Sprite::from(vxx).with_size(VIDEO_SIZE), VIDEO_POS);
 
 		if key == &"V00" {
 			b.fade_in(ALL);
@@ -316,7 +313,7 @@ fn show_magazine(dep: &mut Dependencies) -> Result<()> {
 	dep.cmd.batch(None)
 		.fade_out(FRONT);
 
-	let v33 = get_with_leading_pal(dep.arc, "V33", &mut pal)?;
+	let (v33, pal) = get_with_leading_pal(dep.arc, "V33", &pal)?;
 
 	dep.cmd.batch(Some(2000))
 		.palette(pal)
