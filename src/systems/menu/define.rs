@@ -1,10 +1,8 @@
-use generational_arena::Index;
 use eyre::Result;
+use winit::event::VirtualKeyCode;
 
 use super::{
-	build_frame,
 	DEFINE_ITEM_POS,
-	FRAME_BORDER,
 	FRAME_OFFSET,
 	FRAME_SIZE_4R,
 	FRAME_SIZE_ST,
@@ -16,65 +14,12 @@ use crate::{
 		system::System,
 	},
 	game::{
-		input::KeyCode,
 		options::Config,
 		state::{GameFlow, GameState, Screen},
 	},
-	graphics::{font::Font, Sprite, SCREEN_START},
-	systems::{Cache, Input, Window},
+	graphics::{Drawable as _, font::Font, Sprite, SCREEN_START, Frame, FRAME_BORDER},
+	systems::{Cache, Window},
 };
-
-struct Store {
-	bg: Index,
-	frame_st: Index,
-	frame_4r: Index,
-}
-
-pub struct Menu {
-	store: Option<Store>,
-}
-
-impl Menu {
-	fn prepare(&mut self, win: &mut Window, arc: &Archive) -> Result<()> {
-		self.store = Some(Store {
-			bg: win.draw(&Sprite::from(arc.get("I16")?)).id,
-			frame_st: win.paint(FRAME_SIZE_ST, |_, c| build_frame(FRAME_SIZE_ST, c)).id,
-			frame_4r: win.paint(FRAME_SIZE_4R, |_, c| build_frame(FRAME_SIZE_4R, c)).id,
-		});
-
-		Ok(())
-	}
-
-	fn show(&self, win: &mut Window, _cfg: &Config, font_c04: &Font, row: u8) {
-		let store = self.store.as_ref().unwrap();
-
-		win.show(store.bg, SCREEN_START);
-
-		win.print(font_c04, "XKXCJGFJH-33").show((117, 56).into());
-		win.print(font_c04, "         -00").show((117, 56 + 15 * 1).into());
-		win.print(font_c04, "         -00").show((117, 56 + 15 * 2).into());
-		win.print(font_c04, "         -00").show((117, 56 + 15 * 3).into());
-		win.print(font_c04, "         -00").show((117, 56 + 15 * 4).into());
-		win.print(font_c04, "         -00").show((117, 56 + 15 * 5).into());
-		win.print(font_c04, "         -00").show((117, 56 + 15 * 6).into());
-		win.print(font_c04, "         -00").show((117, 56 + 15 * 7).into());
-		win.print(font_c04, "         -00").show((117, 56 + 15 * 8).into());
-
-		// frame should be the last (i.e. on top of everything)
-		const COL: u8 = 1;
-
-		let frame = if row == 0 { store.frame_st } else { store.frame_4r };
-		let width = win.txt_size(frame).unwrap().width;
-
-		win.show(
-			frame,
-			(
-				(FRAME_OFFSET.0 + COL as u32 * (width - FRAME_BORDER)) as i32,
-				(FRAME_OFFSET.1 + row as u32 * (FRAME_SIZE_ST.height - FRAME_BORDER)) as i32,
-			).into(),
-		);
-	}
-}
 
 derive_dependencies_from! {
 	pub struct Dependencies<'ctx> {
@@ -82,20 +27,28 @@ derive_dependencies_from! {
 		cache: &'ctx Cache,
 		cfg: &'ctx mut Config,
 		ctrl: &'ctx mut ControlFlow,
-		input: &'ctx mut Input,
 		flow: &'ctx mut GameFlow,
 		win: &'ctx mut Window,
 	}
+}
+
+struct Assets {
+	bgr: Sprite,
+}
+
+#[derive(Default)]
+pub struct Menu {
+	assets: Option<Assets>,
 }
 
 impl<'ctx> System<'ctx> for Menu {
 	type Dependencies = Dependencies<'ctx>;
 
 	fn create(_: Self::Dependencies) -> Result<Self> {
-		Ok(Self { store: None })
+		Ok(Self::default())
 	}
 
-	fn update(&mut self, mut dep: Self::Dependencies) -> Result<()> {
+	fn update(&mut self, dep: Self::Dependencies) -> Result<()> {
 		let (row, editor) = if let GameState::Menu(Screen::Define { row, editor }) = &mut dep.flow.state {
 			(row, editor)
 		} else {
@@ -107,36 +60,53 @@ impl<'ctx> System<'ctx> for Menu {
 
 			dep.win.clear();
 
-			self.prepare(dep.win, dep.arc)?;
-			self.show(dep.win, dep.cfg, &dep.cache.font_c04, *row);
+			self.assets = Some(load(dep.arc)?);
+			render(dep.win, self.assets.as_ref().unwrap(), dep.cfg, &dep.cache.font_c04, *row);
 
 			dep.win.fade_in();
 		}
 
-		if dep.input.keys.is_empty() {
-			return Ok(());
-		}
-
 		let prev_cfg = dep.cfg.clone();
 		let prev_state = (*row, *editor);
+		let mut quit = false;
 
-		for key in &dep.input.keys {
-			if key_press(key, dep.cfg, row, editor) {
-				self.store = None;
-
-				dep.flow.set(GameState::main_menu_pos(DEFINE_ITEM_POS));
-				dep.input.keys.clear();
-
-				dep.win.fade_out();
-				dep.win.free();
-
-				return Ok(());
+		if !*editor {
+			match *row {
+				0 if dep.ctrl.input.key_pressed(VirtualKeyCode::Down) => *row += 1,
+				1 if dep.ctrl.input.key_pressed(VirtualKeyCode::Up) => *row -= 1,
+				_ => {},
 			}
+		}
+
+		if dep.ctrl.input.key_pressed(VirtualKeyCode::Escape) {
+			if *editor {
+				*editor = false;
+			} else {
+				quit = true;
+			}
+		}
+
+		if dep.ctrl.input.key_pressed(VirtualKeyCode::Return) {
+			match row {
+				0 => quit = true,
+				1 => *editor = !*editor,
+				_ => {}
+			}
+		}
+
+		if quit {
+			self.assets = None;
+
+			dep.flow.set(GameState::main_menu_pos(DEFINE_ITEM_POS));
+			dep.win.fade_out();
+			dep.ctrl.input = winit_input_helper::WinitInputHelper::new();
+
+			return Ok(());
 		}
 
 		if (*row, *editor) != prev_state || dep.cfg != &prev_cfg {
 			dep.win.clear();
-			self.show(dep.win, dep.cfg, &dep.cache.font_c04, *row);
+			render(dep.win, self.assets.as_ref().unwrap(), dep.cfg, &dep.cache.font_c04, *row);
 			dep.win.present();
 		}
 
@@ -144,28 +114,32 @@ impl<'ctx> System<'ctx> for Menu {
 	}
 }
 
-fn key_press(key: &KeyCode, _cfg: &mut Config, row: &mut u8, editor: &mut bool) -> bool {
-	match (key, *row, *editor) {
-		(KeyCode::Down, 0, false) => {
-			*row += 1;
-		}
-		(KeyCode::Up, 1, false) => {
-			*row -= 1;
-		}
-		(KeyCode::Escape, _, true) => {
-			*editor = false;
-		}
-		(KeyCode::Escape, _, false) => {
-			return true;
-		}
-		(KeyCode::Return, 0, false) => {
-			return true;
-		}
-		(KeyCode::Return, 1, _) => {
-			*editor = !*editor;
-		}
-		_ => {}
-	}
+fn load(arc: &Archive) -> Result<Assets> {
+	Ok(Assets {
+		bgr: Sprite::from(arc.get("I16")?),
+	})
+}
 
-	false
+fn render(win: &mut Window, a: &Assets, _cfg: &Config, font: &Font, row: u8) {
+	win.draw(&a.bgr, SCREEN_START);
+
+	win.print("XKXCJGFJH-33", font, (117, 56).into());
+	win.print("         -00", font, (117, 56 + 15 * 1).into());
+	win.print("         -00", font, (117, 56 + 15 * 2).into());
+	win.print("         -00", font, (117, 56 + 15 * 3).into());
+	win.print("         -00", font, (117, 56 + 15 * 4).into());
+	win.print("         -00", font, (117, 56 + 15 * 5).into());
+	win.print("         -00", font, (117, 56 + 15 * 6).into());
+	win.print("         -00", font, (117, 56 + 15 * 7).into());
+	win.print("         -00", font, (117, 56 + 15 * 8).into());
+
+	const COL: u8 = 1;
+
+	let frame = Frame::new(if row == 0 { FRAME_SIZE_ST } else { FRAME_SIZE_4R });
+	let pos = (
+		(COL as u32 * (frame.width() - FRAME_BORDER + 1) + FRAME_OFFSET.0),
+		(row as u32 * (FRAME_SIZE_ST.height - FRAME_BORDER + 1) + FRAME_OFFSET.1),
+	).into();
+
+	win.draw(&frame, pos);
 }

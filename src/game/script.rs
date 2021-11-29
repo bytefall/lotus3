@@ -1,6 +1,6 @@
 use crate::{
 	game::state::GameState,
-	graphics::{PaintFn, Point, Size, Sprite},
+	graphics::{PaintFn, Point, Sprite},
 };
 use std::{collections::VecDeque, time::Duration};
 
@@ -16,13 +16,13 @@ pub const FRONT: Option<Layer> = Some(Layer::Front);
 pub enum Command {
 	Palette(Vec<u8>),
 	Draw(Option<Layer>, Sprite, Point),
-	Paint(Option<Layer>, Box<PaintFn>, Size, Point),
+	Paint(Option<Layer>, Box<PaintFn>),
 	Print(Option<Layer>, &'static str, Point),
 	Present,
 	Clear(Option<Layer>),
 	FadeIn(Option<Layer>),
 	FadeOut(Option<Layer>),
-	FadeOutByColorIndex(usize),
+	FadeOutByColor(usize),
 	State(GameState),
 }
 
@@ -42,8 +42,8 @@ impl CommandBatch {
 		self
 	}
 
-	pub fn paint(&mut self, target: Option<Layer>, f: Box<PaintFn>, size: Size, pos: Point) -> &mut Self {
-		self.commands.push(Command::Paint(target, f, size, pos));
+	pub fn paint(&mut self, target: Option<Layer>, f: Box<PaintFn>) -> &mut Self {
+		self.commands.push(Command::Paint(target, f));
 		self
 	}
 
@@ -73,7 +73,7 @@ impl CommandBatch {
 	}
 
 	pub fn fade_out_color(&mut self, ix: usize) -> &mut Self {
-		self.commands.push(Command::FadeOutByColorIndex(ix));
+		self.commands.push(Command::FadeOutByColor(ix));
 		self
 	}
 

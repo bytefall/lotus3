@@ -1,118 +1,116 @@
-use generational_arena::Index;
 use eyre::Result;
+use winit::event::VirtualKeyCode;
+use winit_input_helper::TextChar;
 
 use crate::{
 	data::Archive,
-	ecs::system::System,
-	game::{
-		input::KeyCode,
-		state::{GameFlow, GameState},
-	},
-	graphics::{Size, Sprite, SCREEN_START},
-	systems::{Cache, Input, Window},
+	ecs::{context::ControlFlow, system::System},
+	game::state::{GameFlow, GameState},
+	graphics::{font::Font, Size, Sprite, SCREEN_START},
+	systems::{Cache, Window},
 };
 
 derive_dependencies_from! {
 	pub struct Dependencies<'ctx> {
 		arc: &'ctx Archive,
 		cache: &'ctx Cache,
-		input: &'ctx mut Input,
+		ctrl: &'ctx mut ControlFlow,
 		flow: &'ctx mut GameFlow,
 		win: &'ctx mut Window,
 	}
 }
 
+struct Assets {
+	bgr: Sprite,
+	helmet1: Sprite,
+	helmet2: Sprite,
+}
+
+#[derive(Default)]
 pub struct Protection {
-	input_id: Option<Index>,
+	assets: Option<Assets>,
 	code: String,
 }
+
+const HELMET_SIZE: Size = Size::wh(48, 40); // 24 helmets of 48x40 bytes each
 
 impl<'ctx> System<'ctx> for Protection {
 	type Dependencies = Dependencies<'ctx>;
 
 	fn create(_: Self::Dependencies) -> Result<Self> {
-		Ok(Self{
-			input_id: None,
-			code: String::new(),
-		})
+		Ok(Self::default())
 	}
 
-	fn update(&mut self, mut dep: Self::Dependencies) -> Result<()> {
-		if dep.flow.state != GameState::Protection {
+	fn update(&mut self, dep: Self::Dependencies) -> Result<()> {
+		if dep.flow.current() != &GameState::Protection {
 			return Ok(());
+		}
+
+		let mut first_time = false;
+
+		if dep.flow.changed {
+			dep.flow.changed = false;
+			first_time = true;
+
+			let (pal, a) = load(dep.arc)?;
+			dep.win.palette = pal;
+			self.assets = Some(a);
 		}
 
 		let mut key_pressed = false;
 
-		for key in &dep.input.keys {
-			match key.to_char() {
-				Some(c) => {
-					if self.code.len() < 3 {
-						self.code.push(c);
+		for key in dep.ctrl.input.text() {
+			match key {
+				TextChar::Char(c) if self.code.len() < 3 => {
+					if c.is_ascii_alphabetic() || c.is_ascii_digit() {
+						self.code.push(c.to_ascii_uppercase());
+
 						key_pressed = true;
 					}
 				}
-				None => match key {
-					KeyCode::Return | KeyCode::Escape => {
-						dep.input.keys.clear();
-						dep.win.fade_out();
-						dep.win.free();
-						dep.flow.set(GameState::Intro);
-
-						self.input_id = None;
-
-						return Ok(());
-					}
-					KeyCode::Backspace if self.code.pop().is_some() => {
-						key_pressed = true;
-					}
-					_ => {}
-				},
+				TextChar::Back if self.code.pop().is_some() => {
+					key_pressed = true;
+				}
+				_ => {}
 			}
 		}
 
-		if key_pressed {
-			let prev = self
-				.input_id
-				.replace(dep.win.print(&dep.cache.font_c03, &self.code).show((150, 165).into()).id);
+		if dep.ctrl.input.key_pressed(VirtualKeyCode::Return) || dep.ctrl.input.key_pressed(VirtualKeyCode::Escape) {
+			dep.flow.set(GameState::Intro);
+			dep.win.fade_out();
+			dep.ctrl.input = winit_input_helper::WinitInputHelper::new();
 
-			if let Some(id) = prev {
-				dep.win.remove(id);
-			}
-
-			dep.win.present();
+			return Ok(());
 		}
 
-		if dep.flow.changed {
-			dep.flow.changed = false;
-
-			show_protection_screen(&mut dep)?;
+		if key_pressed || first_time {
+			render(dep.win, self.assets.as_ref().unwrap(), &self.code, &dep.cache.font_c03);
 		}
 
 		Ok(())
 	}
 }
 
-const HELMET_SIZE: Size = Size::wh(48, 40); // 24 helmets of 48x40 bytes each
-
-fn show_protection_screen(dep: &mut Dependencies) -> Result<()> {
-	let i22 = dep.arc.get("I22")?;
+fn load(arc: &Archive) -> Result<(Vec<u8>, Assets)> {
+	let i22 = arc.get("I22")?;
 	let mut i22 = i22.chunks((HELMET_SIZE.width * HELMET_SIZE.height) as usize);
 
-	let helmets = (
-		Sprite::from(i22.next().unwrap().to_vec()).with_size(HELMET_SIZE),
-		Sprite::from(i22.next().unwrap().to_vec()).with_size(HELMET_SIZE),
-	);
+	let (i21, pal) = arc.get_with_palette("I21")?;
 
-	let (i21, pal) = dep.arc.get_with_palette("I21")?;
+	let a = Assets {
+		helmet1: Sprite::from(i22.next().unwrap().to_vec()).with_size(HELMET_SIZE),
+		helmet2: Sprite::from(i22.next().unwrap().to_vec()).with_size(HELMET_SIZE),
+		bgr: Sprite::from(i21),
+	};
 
-	dep.win.clear();
-	dep.win.palette = pal;
-	dep.win.draw(&Sprite::from(i21)).show(SCREEN_START);
-	dep.win.draw(&helmets.0).show((141, 13).into());
-	dep.win.draw(&helmets.1).show((141, 73).into());
-	dep.win.print(&dep.cache.font_c03, "ENTER CODE FOR WINDOW 47").show((60, 140).into());
-	dep.win.present();
+	Ok((pal, a))
+}
 
-	Ok(())
+fn render(win: &mut Window, a: &Assets, code: &str, font: &Font) {
+	win.draw(&a.bgr, SCREEN_START);
+	win.draw(&a.helmet1, (141, 13).into());
+	win.draw(&a.helmet2, (141, 73).into());
+	win.print("ENTER CODE FOR WINDOW 47", font, (60, 140).into());
+	win.print(code, font, (150, 165).into());
+	win.present();
 }

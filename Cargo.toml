@@ -7,11 +7,10 @@ edition = "2021"
 [dependencies]
 eyre = "0.6.5"
 color-eyre = { version = "0.5.11", default-features = false }
-generational-arena = "0.2.4"
-
-[dependencies.sdl2]
-version = "0.34.5"
-features = ["unsafe_textures"]
+pixels = "0.8"
+winit = { version = "0.25", default-features = false, features = ["x11"] }
+winit_input_helper = "0.10"
+wgpu = "0.11"
 
 [dev-dependencies]
 md5 = "0.6.0"

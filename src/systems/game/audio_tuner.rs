@@ -1,43 +1,49 @@
 use eyre::Result;
+use winit::event::VirtualKeyCode;
 
 use crate::{
 	data::Archive,
-	ecs::system::System,
+	ecs::{context::ControlFlow, system::System},
 	game::state::{GameFlow, GameState},
-	graphics::{Size, Sprite, SCREEN_START},
-	systems::{Input, Timer, Window},
+	graphics::{Sprite, SCREEN_START},
+	systems::{Timer, Window},
 };
 
 derive_dependencies_from! {
 	pub struct Dependencies<'ctx> {
 		arc: &'ctx Archive,
-		input: &'ctx mut Input,
 		timer: &'ctx mut Timer,
+		ctrl: &'ctx mut ControlFlow,
 		flow: &'ctx mut GameFlow,
 		win: &'ctx mut Window,
 	}
 }
 
-pub struct AudioTuner;
+struct Assets {
+	bgr: Sprite,
+}
+
+#[derive(Default)]
+pub struct AudioTuner {
+	assets: Option<Assets>,
+}
 
 impl<'ctx> System<'ctx> for AudioTuner {
 	type Dependencies = Dependencies<'ctx>;
 
 	fn create(_: Self::Dependencies) -> Result<Self> {
-		Ok(Self {
-		})
+		Ok(Self::default())
 	}
 
-	fn update(&mut self, mut dep: Self::Dependencies) -> Result<()> {
+	fn update(&mut self, dep: Self::Dependencies) -> Result<()> {
 		if dep.flow.current() != &GameState::AudioTuner {
 			return Ok(());
 		}
 
-		if !dep.input.keys.is_empty() {
-			dep.input.keys.clear();
-			dep.win.fade_out();
-			dep.win.free();
+		if dep.ctrl.input.key_pressed(VirtualKeyCode::Escape) {
 			dep.flow.set(GameState::main_menu());
+			dep.win.fade_out();
+			dep.ctrl.input = winit_input_helper::WinitInputHelper::new();
 
 			return Ok(());
 		}
@@ -45,24 +51,25 @@ impl<'ctx> System<'ctx> for AudioTuner {
 		if dep.flow.changed {
 			dep.flow.changed = false;
 
-			let (bgr, pal) = dep.arc.get_with_palette("I1C")?;
+			let (pal, a) = load(dep.arc)?;
 			dep.win.palette = pal;
-			dep.win.draw(&Sprite::from(bgr)).show(SCREEN_START);
+			self.assets = Some(a);
 
-			let mut yy = 174;
-
-			for _ in 0..7 {
-				dep.win
-					.paint(Size::wh(5, 1), |_, c| { c.color(162, 0, 0, 255); c.line((0, 0).into(), (5, 0).into()); })
-					.show((168, yy).into());
-				yy += 2;
-			}
-
-			//dep.win.print(&dep.cache.font_c06, "01:02:03").show((60, 140).into());
+			render(dep.win, self.assets.as_ref().unwrap());
 
 			dep.win.fade_in();
 		}
 
 		Ok(())
 	}
+}
+
+fn load(arc: &Archive) -> Result<(Vec<u8>, Assets)> {
+	let (bgr, pal) = arc.get_with_palette("I1C")?;
+
+	Ok((pal, Assets { bgr: Sprite::from(bgr) }))
+}
+
+fn render(win: &mut Window, a: &Assets) {
+	win.draw(&a.bgr, SCREEN_START);
 }

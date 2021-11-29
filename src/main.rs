@@ -15,7 +15,7 @@ use crate::{
 		game::{AudioTuner, ModelSelect},
 		intro::{Intro, Protection},
 		menu::{DefineMenu, MainMenu},
-		Cache, Input, Script, Timer, Window, WindowConfig,
+		Cache, Script, Timer, Window, WindowConfig,
 	},
 };
 
@@ -32,7 +32,7 @@ fn main() -> eyre::Result<()> {
 	let arc = Archive::open(&lotus3::ARCHIVE_FILE_NAME)?;
 	let cfg = Config::new();
 
-	let mut ctx = ContextBuilder::new()
+	ContextBuilder::new()
 		.inject(WindowConfig {
 			title: "Lotus III: The Ultimate Challenge",
 			width: 320,
@@ -44,7 +44,6 @@ fn main() -> eyre::Result<()> {
 		.inject_mut(GameFlow::new(GameState::Protection))
 		.system(Timer::bind())?
 		.system(Window::bind())?
-		.system(Input::bind())?
 		.system(Cache::bind())?
 		// game systems
 		.system(Protection::bind())?
@@ -55,9 +54,6 @@ fn main() -> eyre::Result<()> {
 		.system(AudioTuner::bind())?
 		// -end-
 		.system(Script::bind())?
-		.build()?;
-
-	ctx.run()?;
-
-	Ok(())
+		.build()?
+		.run();
 }

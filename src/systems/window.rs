@@ -1,39 +1,16 @@
 use eyre::Result;
-use generational_arena::{Arena, Index};
-use sdl2::{
-	pixels::{Color, PixelFormatEnum},
-	rect::{Point as Point2, Rect},
-	render::{BlendMode, Canvas, RenderTarget, Texture, TextureCreator},
-	video::WindowContext,
-	Sdl,
-};
-use std::{
-	cmp::{max, min},
-	thread,
-	time::{Duration, Instant},
+use pixels::{Pixels, PixelsBuilder, SurfaceTexture};
+use std::time::Instant;
+use winit::{
+	dpi::{LogicalPosition, PhysicalSize},
+	event_loop::EventLoop,
+	window::{Window as WinitWindow, WindowBuilder},
 };
 
 use crate::{
 	ecs::system::System,
-	graphics::{Drawable, PaintCanvas, Point, Printable, Size},
+	graphics::{Canvas, Color, Drawable, Point, Printable, FadeType, SCREEN_BPP},
 };
-
-impl<T> PaintCanvas for Canvas<T>
-where
-	T: RenderTarget,
-{
-	fn color(&mut self, r: u8, g: u8, b: u8, a: u8) {
-		self.set_draw_color(Color::RGBA(r, g, b, a));
-	}
-
-	fn point(&mut self, point: Point) {
-		self.draw_point((point.x, point.y)).unwrap();
-	}
-
-	fn line(&mut self, start: Point, end: Point) {
-		self.draw_line((start.x, start.y), (end.x, end.y)).unwrap();
-	}
-}
 
 pub struct WindowConfig {
 	pub title: &'static str,
@@ -42,351 +19,142 @@ pub struct WindowConfig {
 }
 
 pub struct Window {
+	_window: WinitWindow,
+	pub event_loop: Option<EventLoop<()>>,
+	pixels: Pixels,
 	pub palette: Vec<u8>,
-	pub context: Sdl,
-	canvas: Canvas<sdl2::video::Window>,
-	creator: TextureCreator<WindowContext>,
-	cache: Arena<CacheItem>,
-	screen: Vec<ScreenItem>,
 }
-
-struct CacheItem {
-	txt: Texture,
-	size: Size,
-}
-
-struct ScreenItem {
-	id: Index,
-	pos: Point,
-}
-
-pub struct IndexChain<'a> {
-	win: &'a mut Window,
-	pub id: Index,
-}
-
-impl<'a> IndexChain<'a> {
-	pub fn show(&'a mut self, pos: Point) -> &'a mut Self {
-		self.win.show(self.id, pos);
-		self
-	}
-}
-
-const PIXEL_FORMAT_RGB: PixelFormatEnum = PixelFormatEnum::RGB24;
-const PIXEL_FORMAT_RGBA: PixelFormatEnum = PixelFormatEnum::RGBA8888;
-const FADE_STEP: Duration = Duration::from_millis(3);
 
 impl Window {
-	pub fn draw(&mut self, sprite: &dyn Drawable) -> IndexChain {
-		let size = Size::wh(sprite.width(), sprite.height());
+	pub fn draw(&mut self, sprite: &dyn Drawable, pos: Point) {
+		let buffer = &mut self.pixels.get_frame()[pos.range()];
 
-		let mut txt = self.creator
-			.create_texture_streaming(PIXEL_FORMAT_RGB, size.width, size.height)
-			.unwrap();
+		sprite.draw(buffer, &self.palette);
+	}
 
-		txt.with_lock(None, |buffer: &mut [u8], pitch: usize| {
-			sprite.draw(buffer, pitch, &self.palette)
-		}).unwrap();
+	pub fn print(&mut self, text: &str, font: &dyn Printable, pos: Point) {
+		let buffer = &mut self.pixels.get_frame()[pos.range()];
 
-		IndexChain {
-			id: self.cache.insert(CacheItem { txt, size }),
-			win: self,
+		font.print(buffer, &self.palette, text);
+	}
+
+	pub fn blit(&mut self, canvas: &Canvas) {
+		let mut dst_iter = self.pixels.get_frame().chunks_exact_mut(SCREEN_BPP as usize);
+		let mut src_iter = canvas.get().chunks_exact(SCREEN_BPP as usize);
+
+		while let (Some(dst), Some(src)) = (dst_iter.next(), src_iter.next()) {
+			if src[3] != 0 {
+				dst[0] = src[0];
+				dst[1] = src[1];
+				dst[2] = src[2];
+				dst[3] = src[3];
+			}
 		}
 	}
 
-	pub fn print(&mut self, font: &dyn Printable, text: &str) -> IndexChain {
-		let size = Size::wh(font.width(text), font.height(text));
-
-		let mut txt = self.creator
-			.create_texture_streaming(PIXEL_FORMAT_RGBA, size.width, size.height)
-			.unwrap();
-
-		txt.set_blend_mode(BlendMode::Blend);
-		txt.with_lock(None, |buffer: &mut [u8], pitch: usize| {
-			font.print(buffer, pitch, &self.palette, text)
-		}).unwrap();
-
-		IndexChain {
-			id: self.cache.insert(CacheItem { txt, size }),
-			win: self,
-		}
-	}
-
-	pub fn paint<F>(&mut self, size: Size, f: F) -> IndexChain
-	where
-		for<'r> F: FnOnce(&'r [u8], &'r mut dyn PaintCanvas),
-	{
-		let mut txt = self.creator
-			.create_texture_target(PIXEL_FORMAT_RGBA, size.width, size.height)
-			.unwrap();
-
-		txt.set_blend_mode(BlendMode::Blend);
-
-		let pal = &self.palette;
-
-		self.canvas.with_texture_canvas(&mut txt, |tc| f(pal, tc)).unwrap();
-
-		IndexChain {
-			id: self.cache.insert(CacheItem { txt, size }),
-			win: self,
-		}
-	}
-
-	/// Gets the texture size by its index.
-	pub fn txt_size(&self, id: Index) -> Option<&Size> {
-		self.cache.get(id).map(|ti| &ti.size)
-	}
-
-	/// Shows the texture on a specific position (i.e. makes it visible).
-	///
-	/// It will be visible after either `present` or `fade_in` is called.
-	pub fn show(&mut self, id: Index, pos: Point) {
-		self.screen.push(ScreenItem { id, pos });
-	}
-
-	/// Hides the texture from all visible positions.
-	///
-	/// Change will take affect after either `present` or `fade_in` is called.
-	pub fn hide(&mut self, id: Index) {
-		self.screen.retain(|i| i.id != id);
-	}
-
-	/// Removes the texture from the cache.
-	///
-	/// Change will take affect after either `present` or `fade_in` is called.
-	pub fn remove(&mut self, id: Index) {
-		self.hide(id);
-		self.cache.remove(id);
-	}
-
-	pub fn remove_only(&mut self, ids: &[Index]) {
-		ids.iter().for_each(|id| self.remove(*id));
-	}
-
-	/// Clears the texture cache.
-	///
-	/// Change will take affect after either `present` or `fade_in` is called.
-	pub fn free(&mut self) {
-		self.screen.clear();
-		self.cache.clear();
-	}
-
-	/// Renders visible textures and updates the screen.
 	pub fn present(&mut self) {
-		for s in &self.screen {
-			let t = self.cache.get(s.id).unwrap_or_else(|| panic!("[window.present] Element with id = {:?} is not found", s.id));
-
-			self.canvas.copy(&t.txt, None, Rect::new(s.pos.x, s.pos.y, t.size.width, t.size.height)).unwrap();
-		}
-
-		self.canvas.present();
+		self.pixels.render().unwrap();
 	}
 
-	/// Fades in the screen.
-	///
-	/// NB: this is a blocking operation.
 	pub fn fade_in(&mut self) {
-		let mut instant = Instant::now();
-		let rect = Rect::new(0, 0, 320, 200);
+		let fade = |src, fade_factor| src * fade_factor;
 
-		// create a texture from all visible textures
-		let mut txt = self.creator
-			.create_texture_target(PIXEL_FORMAT_RGBA, rect.width(), rect.height())
-			.unwrap();
-
-		txt.set_blend_mode(BlendMode::Blend);
-
-		let Self { ref screen, ref mut cache, .. } = self;
-
-		self.canvas.with_texture_canvas(&mut txt, |tc| {
-			for s in screen {
-				let t = cache.get(s.id).unwrap_or_else(|| panic!("[window.fade_in] Element with id = {:?} is not found", s.id));
-
-				tc.copy(&t.txt, None, Rect::new(s.pos.x, s.pos.y, t.size.width, t.size.height)).unwrap();
-			}
-		}).unwrap();
-
-		for step in 0..128u8 {
-			txt.set_alpha_mod(step * 2);
-
-			self.canvas.clear();
-			self.canvas.copy(&txt, None, rect).unwrap();
-			self.canvas.present();
-
-			let time_spent = instant.elapsed();
-			thread::sleep(if FADE_STEP > time_spent { FADE_STEP - time_spent } else { FADE_STEP });
-			instant = Instant::now();
-		}
+		self.fade(fade, None, None);
 	}
 
-	pub fn fade_in_only(&mut self, ids: &[Index]) {
-		self.fade_only(ids, true);
-	}
-
-	/// Fades out the screen.
-	///
-	/// NB: this is a blocking operation.
 	pub fn fade_out(&mut self) {
-		let mut instant = Instant::now();
-		let (width, height) = self.canvas.window().size();
+		let fade = |src, fade_factor| src * (1.0 - fade_factor);
 
-		let prev_mode = self.canvas.blend_mode();
-		self.canvas.set_blend_mode(BlendMode::Blend);
-
-		for step in 0..128u8 {
-			self.canvas.set_draw_color(Color::RGBA(0, 0, 0, step));
-			self.canvas.fill_rect(Rect::new(0, 0, width, height)).unwrap();
-			self.canvas.present();
-
-			let time_spent = instant.elapsed();
-			thread::sleep(if FADE_STEP > time_spent { FADE_STEP - time_spent } else { FADE_STEP });
-			instant = Instant::now();
-		}
-
-		self.canvas.set_blend_mode(prev_mode);
+		self.fade(fade, None, None);
 	}
 
-	pub fn fade_out_only(&mut self, ids: &[Index]) {
-		self.fade_only(ids, false);
-	}
+	pub fn fade_out_by_color(&mut self, color: Color) {
+		let fade = |src, fade_factor| src * (1.0 - fade_factor);
 
-	/// Fades out specific color from the palette.
-	///
-	/// NB: this is a blocking operation.
-	pub fn fade_out_by_color_ix(&mut self, ix: usize) {
-		let mut instant = Instant::now();
+		const FADE_KEY: u8 = 100;
 
-		let mut color = {
-			match self.palette.get(ix * 3..ix * 3 + 3) {
-				Some(rgb) => Color::RGBA(rgb[0] << 2, rgb[1] << 2, rgb[2] << 2, 255),
-				None => return,
-			}
+		let prepare = |src: &mut [u8]| {
+			for px in src.chunks_exact_mut(SCREEN_BPP as usize)
+				.filter(|x| x[0..=2] == [color.r, color.g, color.b]) {
+					px[3] = FADE_KEY;
+				}
 		};
 
-		let rect = Rect::new(0, 0, 320, 200);
+		let filter = |px: &[u8]| px[3] == FADE_KEY;
 
-		let mut txt = self.creator
-			.create_texture_target(PIXEL_FORMAT_RGB, rect.width(), rect.height())
-			.unwrap();
+		self.fade(fade, Some(&prepare), Some(filter));
+	}
 
-		let Self { ref screen, ref mut cache, .. } = self;
-		let mut pixels = Vec::new();
+	fn fade(&mut self, fade: fn(f64, f64) -> f64, prepare: Option<&dyn Fn(&mut [u8])>, filter: Option<fn(&[u8]) -> bool>) {
+		let start = Instant::now();
 
-		self.canvas.with_texture_canvas(&mut txt, |tc| {
-			for s in screen {
-				let t = cache.get(s.id).unwrap_or_else(|| panic!("[window.fade_out_by_color_ix] Element with id = {:?} is not found", s.id));
+		let mut source = self.pixels.get_frame().to_vec();
 
-				tc.copy(&t.txt, None, Rect::new(s.pos.x, s.pos.y, t.size.width, t.size.height)).unwrap();
-			}
-
-			if let Ok(px_vec) = tc.read_pixels(rect, PIXEL_FORMAT_RGB) {
-				pixels = px_vec;
-			}
-		}).unwrap();
-
-		if pixels.is_empty() {
-			return;
+		if let Some (f) = prepare {
+			f(&mut source);
 		}
 
-		// store (x, y) for each pixel we're going to fade out
-		let points: Vec<_> = pixels
-			.chunks(3) // pixel data is a 3-byte (RGB) chunk
-			.enumerate()
-			.filter(|(_, x)| x[0..=2] == [color.r, color.g, color.b]) // skip alpha channel
-			.map(|(i, _)| Point2::new(i as i32 % rect.width() as i32, i as i32 / rect.width() as i32))
-			.collect();
+		loop {
+			let ticks = Instant::now().duration_since(start).as_secs_f64() * 280.0;
+			let fade_factor = (ticks / 6.0 / 16.0).clamp(0.0, 1.0);
 
-		for _ in 1..=max(color.r, max(color.g, color.b)) {
-			color.r -= min(color.r, 1);
-			color.g -= min(color.g, 1);
-			color.b -= min(color.b, 1);
+			for (dst, src) in self.pixels.get_frame().chunks_exact_mut(SCREEN_BPP as usize)
+				.zip(source.chunks_exact(SCREEN_BPP as usize))
+				.filter(|(_, src)| filter.map_or(true, |f| f(src))) {
+					dst[0] = fade(src[0] as f64, fade_factor).round() as u8;
+					dst[1] = fade(src[1] as f64, fade_factor).round() as u8;
+					dst[2] = fade(src[2] as f64, fade_factor).round() as u8;
+				}
 
-			self.canvas.with_texture_canvas(&mut txt, |tc| {
-				tc.set_draw_color(color);
-				tc.draw_points(points.as_slice()).unwrap();
-			}).unwrap();
+			self.pixels.render().unwrap();
 
-			self.canvas.clear();
-			self.canvas.copy(&txt, None, rect).unwrap();
-			self.canvas.present();
-
-			let time_spent = instant.elapsed();
-			thread::sleep(if FADE_STEP > time_spent { FADE_STEP - time_spent } else { FADE_STEP });
-			instant = Instant::now();
+			if fade_factor >= 1.0 {
+				break;
+			}
 		}
 	}
 
-	/// Clears the screen (with the default color, which normally is black).
-	///
-	/// Change will take affect after `present` is called.
+	pub fn fade_only(&mut self, fade: FadeType, back: &Canvas, front: &Canvas) {
+		let start = Instant::now();
+
+		loop {
+			let ticks = Instant::now().duration_since(start).as_secs_f64() * 280.0;
+			let fade_factor = (ticks / 6.0 / 16.0).clamp(0.0, 1.0);
+			let alpha = if matches!(fade, FadeType::Out) { 1.0 - fade_factor } else { fade_factor };
+
+			let mut dst_iter = self.pixels.get_frame().chunks_exact_mut(SCREEN_BPP as usize);
+			let mut src_iter = back.get().chunks_exact(SCREEN_BPP as usize);
+			let mut lay_iter = front.get().chunks_exact(SCREEN_BPP as usize);
+
+			fn blend_color(src: u8, lay: u8, alpha: f64) -> u8 {
+				let src = src as f64;
+				let lay = lay as f64;
+
+				((1.0 - alpha) * src + alpha * lay).round() as u8
+			}
+
+			while let (Some(dst), Some(src), Some(lay)) = (dst_iter.next(), src_iter.next(), lay_iter.next()) {
+				if lay[3] != 0 {
+					dst[0] = blend_color(src[0], lay[0], alpha);
+					dst[1] = blend_color(src[1], lay[1], alpha);
+					dst[2] = blend_color(src[2], lay[2], alpha);
+				}
+			}
+
+			self.pixels.render().unwrap();
+
+			if fade_factor >= 1.0 {
+				break;
+			}
+		}
+	}
+
 	pub fn clear(&mut self) {
-		self.screen.clear();
-		self.canvas.clear();
-	}
-
-	fn fade_only(&mut self, ids: &[Index], fade_in: bool) {
-		let mut instant = Instant::now();
-		let rect = Rect::new(0, 0, 320, 200);
-
-		// create a background texture
-		let mut back = self.creator
-			.create_texture_target(PIXEL_FORMAT_RGBA, rect.width(), rect.height())
-			.unwrap();
-
-		let cache = &mut self.cache;
-		let iter = self.screen.iter().filter(|s| !ids.contains(&s.id));
-
-		self.canvas.with_texture_canvas(&mut back, |tc| {
-			for s in iter {
-				let t = cache.get(s.id).unwrap_or_else(|| panic!("[window.fade_only] Element with id = {:?} is not found", s.id));
-
-				tc.copy(&t.txt, None, Rect::new(s.pos.x, s.pos.y, t.size.width, t.size.height)).unwrap();
-			}
-		}).unwrap();
-
-		// create a foreground texture which is going to be faded
-		let mut front = self.creator
-			.create_texture_target(PIXEL_FORMAT_RGBA, rect.width(), rect.height())
-			.unwrap();
-
-		front.set_blend_mode(BlendMode::Blend);
-
-		let iter = self.screen.iter().filter(|s| ids.contains(&s.id));
-
-		self.canvas.with_texture_canvas(&mut front, |tc| {
-			for s in iter {
-				let t = cache.get(s.id).unwrap_or_else(|| panic!("[window.fade_only] Element with id = {:?} is not found", s.id));
-
-				tc.copy(&t.txt, None, Rect::new(s.pos.x, s.pos.y, t.size.width, t.size.height)).unwrap();
-			}
-		}).unwrap();
-
-		self.canvas.clear();
-
-		if fade_in {
-			for step in 0..128u8 {
-				front.set_alpha_mod(step * 2);
-
-				self.canvas.copy(&back, None, rect).unwrap();
-				self.canvas.copy(&front, None, rect).unwrap();
-				self.canvas.present();
-
-				let time_spent = instant.elapsed();
-				thread::sleep(if FADE_STEP > time_spent { FADE_STEP - time_spent } else { FADE_STEP });
-				instant = Instant::now();
-			}
-		} else {
-			for step in (0..128u8).rev() {
-				front.set_alpha_mod(step * 2);
-
-				self.canvas.copy(&back, None, rect).unwrap();
-				self.canvas.copy(&front, None, rect).unwrap();
-				self.canvas.present();
-
-				let time_spent = instant.elapsed();
-				thread::sleep(if FADE_STEP > time_spent { FADE_STEP - time_spent } else { FADE_STEP });
-				instant = Instant::now();
-			}
+		for pixel in self.pixels.get_frame().chunks_exact_mut(SCREEN_BPP as usize) {
+			pixel[0] = 0;
+			pixel[1] = 0;
+			pixel[2] = 0;
+			pixel[3] = 255;
 		}
 	}
 }
@@ -397,26 +165,55 @@ impl<'ctx> System<'ctx> for Window {
 	type Dependencies = &'ctx WindowConfig;
 
 	fn create(cfg: Self::Dependencies) -> Result<Self> {
-		let context = sdl2::init().unwrap();
-		let video = context.video().unwrap();
+		let size = PhysicalSize::new(cfg.width * SCREEN_SCALE, cfg.height * SCREEN_SCALE);
+		let event_loop = EventLoop::new();
 
-		let window = video
-			.window(cfg.title, cfg.width * SCREEN_SCALE, cfg.height * SCREEN_SCALE)
-			.position_centered()
+		let window = WindowBuilder::new()
+			.with_visible(false)
+			.with_title(cfg.title)
+			.with_inner_size(size)
+			.with_min_inner_size(size)
+			.with_resizable(false)
+			.build(&event_loop)?;
+
+		let size = window.inner_size();
+		let pixels = PixelsBuilder::new(cfg.width, cfg.height, SurfaceTexture::new(size.width, size.height, &window))
+			.device_descriptor(wgpu::DeviceDescriptor {
+				label: None,
+				features: wgpu::Features::empty(),
+				limits: wgpu::Limits {
+					max_dynamic_storage_buffers_per_pipeline_layout: 0,
+					max_storage_buffers_per_shader_stage: 0,
+					max_storage_textures_per_shader_stage: 0,
+					max_storage_buffer_binding_size: 0,
+					..wgpu::Limits::default()
+				}
+			})
+			.wgpu_backend(wgpu::Backends::all())
 			.build()?;
 
-		let mut canvas = window.into_canvas().build().unwrap();
-		canvas.set_scale(SCREEN_SCALE as f32, SCREEN_SCALE as f32).unwrap();
+		let (monitor_width, monitor_height) = {
+			if let Some(monitor) = window.current_monitor() {
+				let size = monitor.size().to_logical(window.scale_factor());
+				(size.width, size.height)
+			} else {
+				(cfg.width, cfg.height)
+			}
+		};
 
-		let creator = canvas.texture_creator();
+		let center = LogicalPosition::new(
+			(monitor_width - cfg.width * SCREEN_SCALE) as f32 / 2.0,
+			(monitor_height - cfg.height * SCREEN_SCALE) as f32 / 2.0,
+		);
+
+		window.set_outer_position(center);
+		window.set_visible(true);
 
 		Ok(Self {
+			_window: window,
+			event_loop: Some(event_loop),
+			pixels,
 			palette: Vec::new(),
-			context,
-			canvas,
-			creator,
-			cache: Arena::new(),
-			screen: Vec::new(),
-		})
+		}).map(|mut win| { win.clear(); win })
 	}
 }

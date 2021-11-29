@@ -1,5 +1,3 @@
-use generational_arena::Index;
-
 use crate::{
 	data::Archive,
 	ecs::system::InfallibleSystem,
@@ -7,6 +5,7 @@ use crate::{
 		script::{Command, CommandSequence, Layer},
 		state::GameFlow,
 	},
+	graphics::{Canvas, Color, FadeType},
 	systems::{Cache, Timer, Window},
 };
 
@@ -21,19 +20,17 @@ derive_dependencies_from! {
 	}
 }
 
+#[derive(Default)]
 pub struct Script {
-	front_ids: Vec<Index>,
-	back_ids: Vec<Index>,
+	back: Option<Canvas>,
+	front: Option<Canvas>,
 }
 
 impl<'ctx> InfallibleSystem<'ctx> for Script {
 	type Dependencies = Dependencies<'ctx>;
 
 	fn create(_: Self::Dependencies) -> Self {
-		Self {
-			front_ids: Vec::new(),
-			back_ids: Vec::new(),
-		}
+		Self::default()
 	}
 
 	fn update(&mut self, dep: Self::Dependencies) {
@@ -41,14 +38,6 @@ impl<'ctx> InfallibleSystem<'ctx> for Script {
 		let batch = if let Some(batch) = dep.cmd.pop() {
 			batch
 		} else {
-			if !self.front_ids.is_empty() {
-				self.front_ids.clear();
-			}
-
-			if !self.back_ids.is_empty() {
-				self.back_ids.clear();
-			}
-
 			return;
 		};
 
@@ -57,86 +46,102 @@ impl<'ctx> InfallibleSystem<'ctx> for Script {
 				Command::Palette(pal) => {
 					dep.win.palette = pal;
 				}
-				Command::Draw(target, sprite, pos) => {
-					let id = dep.win.draw(&sprite).show(pos).id;
-
-					match target {
-						Some(Layer::Front) => self.front_ids.push(id),
-						Some(Layer::Back) => self.back_ids.push(id),
-						None => (),
+				Command::Draw(target, sprite, pos) => match target {
+					Some(Layer::Front) => {
+						self.front.get_or_insert_with(Canvas::default).draw(&sprite, &dep.win.palette, pos);
+					}
+					Some(Layer::Back) => {
+						self.back.get_or_insert_with(Canvas::default).draw(&sprite, &dep.win.palette, pos);
+					}
+					None => {
+						dep.win.draw(&sprite, pos);
 					}
 				}
-				Command::Paint(target, f, size, pos) => {
-					let id = dep.win.paint(size, f).show(pos).id;
+				Command::Paint(target, paint_fn) => match target {
+					Some(Layer::Front) => {
+						let front = self.front.get_or_insert_with(Canvas::default);
 
-					match target {
-						Some(Layer::Front) => self.front_ids.push(id),
-						Some(Layer::Back) => self.back_ids.push(id),
-						None => (),
+						paint_fn(front, &dep.win.palette);
+					}
+					Some(Layer::Back) => {
+						let back = self.back.get_or_insert_with(Canvas::default);
+
+						paint_fn(back, &dep.win.palette);
+					}
+					None => {
+						let mut canvas = Canvas::default();
+						paint_fn(&mut canvas, &dep.win.palette);
+
+						dep.win.blit(&canvas);
 					}
 				}
-				Command::Print(target, text, pos) => {
-					let id = dep.win.print(&dep.cache.font_q1a, text).show(pos).id;
-
-					match target {
-						Some(Layer::Front) => self.front_ids.push(id),
-						Some(Layer::Back) => self.back_ids.push(id),
-						None => (),
+				Command::Print(target, text, pos) => match target {
+					Some(Layer::Front) => {
+						self.front.get_or_insert_with(Canvas::default).print(text, &dep.cache.font_q1a, &dep.win.palette, pos);
+					}
+					Some(Layer::Back) => {
+						self.back.get_or_insert_with(Canvas::default).print(text, &dep.cache.font_q1a, &dep.win.palette, pos);
+					}
+					None => {
+						dep.win.print(text, &dep.cache.font_q1a, pos);
 					}
 				}
 				Command::Present => {
+					self.back.as_ref().map_or((), |c| dep.win.blit(c));
+					self.front.as_ref().map_or((), |c| dep.win.blit(c));
+
 					dep.win.present();
 				}
 				Command::Clear(target) => match target {
 					Some(Layer::Front) => {
-						dep.win.remove_only(&self.front_ids);
-
-						self.front_ids.clear();
+						self.front = None;
 					}
 					Some(Layer::Back) => {
-						dep.win.remove_only(&self.back_ids);
-
-						self.back_ids.clear();
+						self.back = None;
 					}
 					None => {
-						dep.win.clear();
-						dep.win.free();
-
-						self.front_ids.clear();
-						self.back_ids.clear();
-					}
-				},
-				Command::FadeIn(target) => match target {
-					Some(Layer::Front) => dep.win.fade_in_only(&self.front_ids),
-					Some(Layer::Back) => dep.win.fade_in_only(&self.back_ids),
-					None => dep.win.fade_in(),
-				},
-				Command::FadeOut(target) => {
-					// remove entities once they are faded out
-					match target {
-						Some(Layer::Front) => {
-							dep.win.fade_out_only(&self.front_ids);
-							dep.win.remove_only(&self.front_ids);
-
-							self.front_ids.clear();
-						}
-						Some(Layer::Back) => {
-							dep.win.fade_out_only(&self.back_ids);
-							dep.win.remove_only(&self.back_ids);
-
-							self.back_ids.clear();
-						}
-						None => {
-							dep.win.fade_out();
-							dep.win.free();
-
-							self.front_ids.clear();
-							self.back_ids.clear();
-						}
+						self.front = None;
+						self.back = None;
 					}
 				}
-				Command::FadeOutByColorIndex(ix) => {
-					dep.win.fade_out_by_color_ix(ix);
+				Command::FadeIn(target) => match target {
+					Some(Layer::Front) => {
+						dep.win.fade_only(FadeType::In, self.back.as_ref().unwrap(), self.front.as_ref().unwrap());
+					}
+					Some(Layer::Back) => {
+						self.back.as_ref().map_or((), |c| dep.win.blit(c));
+
+						dep.win.fade_in();
+					}
+					None => {
+						self.back.as_ref().map_or((), |c| dep.win.blit(c));
+						self.front.as_ref().map_or((), |c| dep.win.blit(c));
+
+						dep.win.fade_in();
+					}
+				}
+				Command::FadeOut(target) => match target {
+					Some(Layer::Front) => {
+						dep.win.fade_only(FadeType::Out, self.back.as_ref().unwrap(), self.front.as_ref().unwrap());
+					}
+					Some(Layer::Back) => {
+						self.back.as_ref().map_or((), |c| dep.win.blit(c));
+
+						dep.win.fade_out();
+					}
+					None => {
+						self.back.as_ref().map_or((), |c| dep.win.blit(c));
+						self.front.as_ref().map_or((), |c| dep.win.blit(c));
+
+						dep.win.fade_out();
+					}
+				}
+				Command::FadeOutByColor(ix) => {
+					let color = dep.win.palette
+						.get(ix * 3..ix * 3 + 3)
+						.map(|rgb| Color::rgb(rgb[0] << 2, rgb[1] << 2, rgb[2] << 2));
+
+					dep.win.fade_out_by_color(color.unwrap());
 				}
 				Command::State(state) => {
 					dep.flow.set(state);

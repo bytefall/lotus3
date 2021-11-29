@@ -1,26 +1,32 @@
 pub const SCREEN_WIDTH: u32 = 320;
 pub const SCREEN_HEIGHT: u32 = 200;
-pub const SCREEN_BPP: usize = 4;
+pub const SCREEN_BPP: u32 = 4;
 pub const SCREEN_START: Point = Point::xy(0, 0);
+pub const SCREEN_SIZE: Size = Size::wh(SCREEN_WIDTH, SCREEN_HEIGHT);
 
 #[derive(Clone)]
 pub struct Point {
-	pub x: i32,
-	pub y: i32,
+	pub x: u32,
+	pub y: u32,
 }
 
 impl Point {
-	pub const fn xy(x: i32, y: i32) -> Self {
+	pub const fn xy(x: u32, y: u32) -> Self {
 		Self { x, y }
 	}
-}
 
-impl From<(i32, i32)> for Point {
-	fn from((x, y): (i32, i32)) -> Self {
-		Point::xy(x, y)
+	pub fn range(&self) -> std::ops::RangeFrom<usize> {
+		((self.y * SCREEN_WIDTH + self.x) * SCREEN_BPP) as usize..
 	}
 }
 
+impl From<(u32, u32)> for Point {
+	fn from((x, y): (u32, u32)) -> Self {
+		Self::xy(x, y)
+	}
+}
+
+#[derive(Debug)]
 pub struct Color {
 	pub r: u8,
 	pub g: u8,
@@ -51,7 +57,7 @@ impl Size {
 }
 
 pub trait Drawable {
-	fn draw(&self, buffer: &mut [u8], pitch: usize, palette: &[u8]);
+	fn draw(&self, buffer: &mut [u8], palette: &[u8]);
 
 	fn width(&self) -> u32;
 
@@ -59,28 +65,58 @@ pub trait Drawable {
 }
 
 pub trait Printable {
-	fn print(&self, buffer: &mut [u8], pitch: usize, palette: &[u8], text: &str);
+	fn print(&self, buffer: &mut [u8], palette: &[u8], text: &str);
 
 	fn width(&self, text: &str) -> u32;
 
 	fn height(&self, text: &str) -> u32;
 }
 
-pub trait PaintCanvas {
-	fn color(&mut self, r: u8, g: u8, b: u8, a: u8);
+pub struct Canvas(Vec<u8>);
 
-	fn point(&mut self, point: Point);
+impl Canvas {
+	pub fn draw(&mut self, sprite: &dyn Drawable, pal: &[u8], pos: Point) {
+		sprite.draw(&mut self.0[pos.range()], pal);
+	}
 
-	fn line(&mut self, start: Point, end: Point);
+	pub fn print(&mut self, text: &str, font: &dyn Printable, pal: &[u8], pos: Point) {
+		font.print(&mut self.0[pos.range()], pal, text);
+	}
+
+	pub fn point(&mut self, color: Color, pos: Point) {
+		let buffer = &mut self.0[pos.range()];
+
+		buffer[0] = color.r << 2;
+		buffer[1] = color.g << 2;
+		buffer[2] = color.b << 2;
+		buffer[3] = 255;
+	}
+
+	pub fn get(&self) -> &[u8] {
+		&self.0
+	}
 }
 
-pub type PaintFn = dyn FnOnce(&[u8], &mut dyn PaintCanvas);
+impl Default for Canvas {
+	fn default() -> Self {
+		Self(vec![0u8; (SCREEN_WIDTH * SCREEN_HEIGHT * SCREEN_BPP) as usize])
+	}
+}
+
+pub type PaintFn = dyn FnOnce(&mut Canvas, &[u8]);
+
+pub enum FadeType {
+	In,
+	Out,
+}
 
 mod bitmap;
 pub mod font;
+mod frame;
 mod sprite;
 mod sprite_font;
 
 pub use self::bitmap::{decode, Bitmap};
+pub use self::frame::{Frame, FRAME_BORDER};
 pub use self::sprite::Sprite;
 pub use self::sprite_font::SpriteFont;

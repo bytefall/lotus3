@@ -15,7 +15,7 @@ impl Font {
 }
 
 impl Printable for Font {
-	fn print(&self, buffer: &mut [u8], pitch: usize, palette: &[u8], text: &str) {
+	fn print(&self, buffer: &mut [u8], palette: &[u8], text: &str) {
 		let mut xx = 0;
 		let mut yy = 0;
 
@@ -32,7 +32,7 @@ impl Printable for Font {
 			}
 
 			if let Some(i) = self.char_set.chars.find(c) {
-				self.bitmap.draw(i, (xx as i32, yy as i32).into(), buffer, pitch, palette);
+				self.bitmap.draw(i, (xx, yy).into(), buffer, palette);
 
 				xx += self.char_set.h_space;
 			}
@@ -40,18 +40,18 @@ impl Printable for Font {
 	}
 
 	fn width(&self, text: &str) -> u32 {
-		(text.len() * self.char_set.h_space) as u32 + 2
+		(text.len() as u32 * self.char_set.h_space) + 2
 	}
 
 	fn height(&self, text: &str) -> u32 {
-		((text.chars().filter(|c| c == &'\n').count() + 1) * self.char_set.v_space) as u32
+		(text.chars().filter(|c| c == &'\n').count() as u32 + 1) * self.char_set.v_space
 	}
 }
 
 pub struct CharSet {
 	chars: &'static str,
-	h_space: usize,
-	v_space: usize,
+	h_space: u32,
+	v_space: u32,
 }
 /*
 pub const CHAR_SET_00: CharSet = CharSet {

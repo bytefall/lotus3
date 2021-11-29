@@ -1,21 +1,25 @@
 use eyre::Result;
+use winit::event::VirtualKeyCode;
 
 use crate::{
 	data::Archive,
-	ecs::system::System,
+	ecs::{
+		context::ControlFlow,
+		system::System,
+	},
 	game::{
 		script::{ALL, BACK, FRONT, CommandSequence},
 		state::{GameState, GameFlow},
 	},
-	graphics::{Point, PaintCanvas, PaintFn, Size, Sprite, SCREEN_START, SCREEN_WIDTH, SCREEN_HEIGHT},
-	systems::{Input, Window},
+	graphics::{Canvas, Point, PaintFn, Size, Sprite, SCREEN_START},
+	systems::Window,
 };
 
 derive_dependencies_from! {
 	pub struct Dependencies<'ctx> {
 		arc: &'ctx Archive,
 		cmd: &'ctx mut CommandSequence,
-		input: &'ctx mut Input,
+		ctrl: &'ctx mut ControlFlow,
 		flow: &'ctx mut GameFlow,
 		win: &'ctx mut Window,
 	}
@@ -35,12 +39,13 @@ impl<'ctx> System<'ctx> for Intro {
 			return Ok(());
 		}
 
-		if !dep.input.keys.is_empty() {
+		if dep.ctrl.input.key_pressed(VirtualKeyCode::Escape)
+				|| dep.ctrl.input.key_pressed(VirtualKeyCode::Return)
+				|| dep.ctrl.input.key_pressed(VirtualKeyCode::Space) {
 			dep.cmd.clear();
-			dep.input.keys.clear();
 			dep.win.fade_out();
-			dep.win.free();
 			dep.flow.set(GameState::main_menu());
+			dep.ctrl.input = winit_input_helper::WinitInputHelper::new();
 
 			return Ok(());
 		}
@@ -67,22 +72,20 @@ fn show_gremlin(dep: &mut Dependencies) -> Result<()> {
 
 	dep.cmd.batch(Some(200))
 		.palette(pal)
-		.draw(BACK, Sprite::from(q00), SCREEN_START)
+		.draw(ALL, Sprite::from(q00), SCREEN_START)
 		.fade_in(ALL);
 
 	let q01 = dep.arc.get_series("Q01", SPLASH_SIZE.width * SPLASH_SIZE.height)?;
 
-	for i in &[0usize, 1, 2, 3, 2, 1, 0] {
+	for i in [0usize, 1, 2, 3, 2, 1, 0] {
 		dep.cmd.batch(Some(100))
-			.clear(FRONT)
-			.draw(FRONT, Sprite::from(q01.get(*i).unwrap().to_vec()).with_size(SPLASH_SIZE), (112, 85).into())
+			.draw(ALL, Sprite::from(q01.get(i).unwrap().to_vec()).with_size(SPLASH_SIZE), (112, 85).into())
 			.present();
 	}
 
-	for i in &[4usize, 5, 6, 7, 6, 5, 4] {
+	for i in [4usize, 5, 6, 7, 6, 5, 4] {
 		dep.cmd.batch(Some(100))
-			.clear(FRONT)
-			.draw(FRONT, Sprite::from(q01.get(*i).unwrap().to_vec()).with_size(SPLASH_SIZE), (144, 110).into())
+			.draw(ALL, Sprite::from(q01.get(i).unwrap().to_vec()).with_size(SPLASH_SIZE), (144, 110).into())
 			.present();
 	}
 
@@ -101,13 +104,11 @@ fn show_magnetic_fields(dep: &mut Dependencies) -> Result<()> {
 	let (_, pal) = dep.arc.get_with_palette(KEYS.last().unwrap())?;
 
 	dep.cmd.batch(None)
-		.clear(ALL)
 		.palette(pal);
 
-	for key in &KEYS {
+	for key in KEYS {
 		dep.cmd.batch(Some(50))
-			.clear(BACK)
-			.draw(BACK, Sprite::from(dep.arc.get(key)?), SCREEN_START)
+			.draw(ALL, Sprite::from(dep.arc.get(key)?), SCREEN_START)
 			.present();
 	}
 
@@ -122,12 +123,10 @@ fn show_magnetic_fields(dep: &mut Dependencies) -> Result<()> {
 fn show_credits(dep: &mut Dependencies) -> Result<()> {
 	const CREDITS_FADE_IN_TIMEOUT: Option<u16> = Some(2000);
 	const CREDITS_FADE_OUT_TIMEOUT: Option<u16> = Some(1000);
-	const CAR_SIZE: Size = Size::wh(SCREEN_WIDTH, SCREEN_HEIGHT);
 
 	let (q19, pal) = dep.arc.get_with_palette("Q19")?;
 
 	dep.cmd.batch(Some(2000))
-		.clear(ALL)
 		.palette(pal)
 		.draw(BACK, Sprite::from(q19), SCREEN_START)
 		.fade_in(ALL);
@@ -145,6 +144,7 @@ fn show_credits(dep: &mut Dependencies) -> Result<()> {
 		.fade_out(FRONT);
 
 	dep.cmd.batch(CREDITS_FADE_IN_TIMEOUT)
+		.clear(FRONT)
 		.print(FRONT, "LEVEL DESIGN", (76, 67).into())
 		.print(FRONT, "BY", (146, 91).into())
 		.print(FRONT, "PETER LIGGETT", (69, 115).into())
@@ -154,6 +154,7 @@ fn show_credits(dep: &mut Dependencies) -> Result<()> {
 		.fade_out(FRONT);
 
 	dep.cmd.batch(CREDITS_FADE_IN_TIMEOUT)
+		.clear(FRONT)
 		.print(FRONT, "MUSIC", (125, 67).into())
 		.print(FRONT, "BY", (146, 91).into())
 		.print(FRONT, "PATRICK PHELAN", (62, 115).into())
@@ -163,6 +164,7 @@ fn show_credits(dep: &mut Dependencies) -> Result<()> {
 		.fade_out(FRONT);
 
 	dep.cmd.batch(CREDITS_FADE_IN_TIMEOUT)
+		.clear(FRONT)
 		.print(FRONT, "PC CONVERSION", (69, 43).into())
 		.print(FRONT, "BY", (146, 67).into())
 		.print(FRONT, "JON MEDHURST FOR", (48, 91).into())
@@ -174,6 +176,7 @@ fn show_credits(dep: &mut Dependencies) -> Result<()> {
 		.fade_out(FRONT);
 
 	dep.cmd.batch(CREDITS_FADE_IN_TIMEOUT)
+		.clear(FRONT)
 		.print(FRONT, "COPYRIGHT 1993", (62, 43).into())
 		.print(FRONT, "MAGNETIC FIELDS", (55, 67).into())
 		.print(FRONT, "(SOFTWARE DESIGN) LTD.", (10, 91).into())
@@ -189,26 +192,24 @@ fn show_credits(dep: &mut Dependencies) -> Result<()> {
 	for step in 1..=36 {
 		dep.cmd.batch(Some(50))
 			.clear(FRONT)
-			.paint(FRONT, draw_a_car(q1b.clone(), step), CAR_SIZE, SCREEN_START)
+			.paint(FRONT, draw_a_car(q1b.clone(), step))
 			.present();
 	}
 
 	dep.cmd.batch(Some(50))
 		.clear(ALL)
-		.draw(BACK, Sprite::from(dep.arc.get("Q1C")?), SCREEN_START)
+		.draw(ALL, Sprite::from(dep.arc.get("Q1C")?), SCREEN_START)
 		.present();
 
 	dep.cmd.batch(Some(50))
-		.clear(ALL)
-		.draw(BACK, Sprite::from(dep.arc.get("Q1D")?), SCREEN_START)
+		.draw(ALL, Sprite::from(dep.arc.get("Q1D")?), SCREEN_START)
 		.present();
 
 	let q1e = dep.arc.get("Q1E")?;
 	let color_ix = *q1e.first().unwrap() as usize;
 
 	dep.cmd.batch(Some(2000))
-		.clear(ALL)
-		.draw(BACK, Sprite::from(q1e), SCREEN_START)
+		.draw(ALL, Sprite::from(q1e), SCREEN_START)
 		.present();
 
 	dep.cmd.batch(Some(4000))
@@ -231,7 +232,7 @@ fn draw_a_car(data: Vec<u8>, step: usize) -> Box<PaintFn> {
 	let xx = di % WIDTH;
 	let mut y = di / WIDTH;
 
-	Box::new(move |pal: &[u8], c: &mut dyn PaintCanvas| {
+	Box::new(move |canvas: &mut Canvas, pal: &[u8]| {
 		for row in (0..WIDTH * 118).step_by(cx) {
 			let offset = (row >> 8) * 224;
 			let mut x = xx;
@@ -240,8 +241,7 @@ fn draw_a_car(data: Vec<u8>, step: usize) -> Box<PaintFn> {
 				let px = *data.get(i).unwrap() as usize;
 	
 				if px != 0xFF {
-					c.color(pal[px * 3 + 0] << 2, pal[px * 3 + 1] << 2, pal[px * 3 + 2] << 2, 255);
-					c.point((x as i32, y as i32).into());
+					canvas.point((pal[px * 3 + 0], pal[px * 3 + 1], pal[px * 3 + 2]).into(), (x as u32, y as u32).into());
 				}
 	
 				x += 1;
@@ -256,7 +256,6 @@ fn show_lotus_logo(dep: &mut Dependencies) -> Result<()> {
 	let (q18, pal) = dep.arc.get_with_palette("Q18")?;
 
 	dep.cmd.batch(Some(2000))
-		.clear(ALL)
 		.palette(pal)
 		.draw(BACK, Sprite::from(q18), SCREEN_START)
 		.fade_in(ALL);
@@ -274,7 +273,6 @@ fn show_magazine(dep: &mut Dependencies) -> Result<()> {
 	let (v32, pal) = dep.arc.get_with_palette("V32")?;
 
 	dep.cmd.batch(None)
-		.clear(ALL)
 		.palette(pal.clone())
 		.draw(BACK, Sprite::from(v32), SCREEN_START);
 
@@ -295,15 +293,14 @@ fn show_magazine(dep: &mut Dependencies) -> Result<()> {
 		"V21", "V22", "V23", "V24", "V25", "V26", "V27", "V28"
 	];
 
-	for key in KEYS.iter() {
+	for key in KEYS {
 		let (vxx, pal) = get_with_leading_pal(dep.arc, key, &pal)?;
 
 		let b = dep.cmd.batch(Some(100))
 			.palette(pal)
-			.clear(FRONT)
 			.draw(FRONT, Sprite::from(vxx).with_size(VIDEO_SIZE), VIDEO_POS);
 
-		if key == &"V00" {
+		if key == "V00" {
 			b.fade_in(ALL);
 		} else {
 			b.present();
@@ -311,7 +308,8 @@ fn show_magazine(dep: &mut Dependencies) -> Result<()> {
 	}
 
 	dep.cmd.batch(None)
-		.fade_out(FRONT);
+		.fade_out(FRONT)
+		.clear(FRONT);
 
 	let (v33, pal) = get_with_leading_pal(dep.arc, "V33", &pal)?;
 
@@ -322,6 +320,7 @@ fn show_magazine(dep: &mut Dependencies) -> Result<()> {
 
 	dep.cmd.batch(None)
 		.fade_out(ALL)
+		.clear(ALL)
 		.state(GameState::main_menu());
 
 	Ok(())

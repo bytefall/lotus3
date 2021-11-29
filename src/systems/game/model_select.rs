@@ -1,112 +1,103 @@
-use generational_arena::Index;
-use std::time::Duration;
 use eyre::Result;
+use std::time::Duration;
+use winit::event::VirtualKeyCode;
 
 use crate::{
 	data::Archive,
-	ecs::system::System,
+	ecs::{context::ControlFlow, system::System},
 	game::{
-		input::KeyCode,
 		options::Model,
 		state::{GameFlow, GameState},
 	},
 	graphics::{Point, Size, Sprite, SCREEN_START},
-	systems::{Input, Timer, Window},
+	systems::{Timer, Window},
 };
 
 derive_dependencies_from! {
 	pub struct Dependencies<'ctx> {
 		arc: &'ctx Archive,
-		input: &'ctx mut Input,
 		timer: &'ctx mut Timer,
+		ctrl: &'ctx mut ControlFlow,
 		flow: &'ctx mut GameFlow,
 		win: &'ctx mut Window,
 	}
 }
 
+struct Assets {
+	bgr: Sprite,
+	anim: Vec<Sprite>,
+}
+
+#[derive(Default)]
 pub struct ModelSelect {
 	model: Model,
 	frame: usize,
-	ids: Vec<Index>,
+	assets: Option<Assets>,
 }
 
 impl<'ctx> System<'ctx> for ModelSelect {
 	type Dependencies = Dependencies<'ctx>;
 
 	fn create(_: Self::Dependencies) -> Result<Self> {
-		Ok(Self {
-			model: Model::Esprit,
-			frame: 0,
-			ids: Vec::new(),
-		})
+		Ok(Self::default())
 	}
 
-	fn update(&mut self, mut dep: Self::Dependencies) -> Result<()> {
+	fn update(&mut self, dep: Self::Dependencies) -> Result<()> {
 		if dep.flow.current() != &GameState::ModelSelect {
 			return Ok(());
-		}
-
-		if let Some(key) = dep.input.keys.first().cloned() {
-			dep.input.keys.clear();
-
-			match key {
-				KeyCode::Left => {
-					self.model = self.model.prev();
-					self.ids.clear();
-
-					dep.win.fade_out();
-					dep.win.free();
-				}
-				KeyCode::Right => {
-					self.model = self.model.next();
-					self.ids.clear();
-
-					dep.win.fade_out();
-					dep.win.free();
-				}
-				KeyCode::Return | KeyCode::Escape => {
-					if matches!(key, KeyCode::Return) {
-						dep.flow.set(GameState::AudioTuner);
-					} else {
-						dep.flow.set(GameState::main_menu());
-					};
-
-					dep.win.fade_out();
-					dep.win.free();
-
-					self.model = Model::Esprit;
-					self.frame = 0;
-					self.ids.clear();
-
-					return Ok(());
-				}
-				_ => {}
-			}
 		}
 
 		if dep.flow.changed {
 			dep.flow.changed = false;
 		}
 
-		if self.ids.is_empty() {
+		if dep.ctrl.input.key_pressed(VirtualKeyCode::Left) {
+			self.model = self.model.prev();
+			self.assets = None;
+
+			dep.win.fade_out();
+		}
+
+		if dep.ctrl.input.key_pressed(VirtualKeyCode::Right) {
+			self.model = self.model.next();
+			self.assets = None;
+
+			dep.win.fade_out();
+		}
+
+		if dep.ctrl.input.key_pressed(VirtualKeyCode::Return) || dep.ctrl.input.key_pressed(VirtualKeyCode::Escape) {
+			if dep.ctrl.input.key_pressed(VirtualKeyCode::Return) {
+				dep.flow.set(GameState::AudioTuner);
+			} else {
+				dep.flow.set(GameState::main_menu());
+			};
+
+			dep.ctrl.input = winit_input_helper::WinitInputHelper::new();
+			dep.win.fade_out();
+
+			*self = Self::default();
+
+			return Ok(());
+		}
+
+		if self.assets.is_none() {
 			self.frame = 0;
 
-			let (bgr_key, ani_key) = KEYS[self.model as usize];
-
-			let (bgr, pal) = dep.arc.get_with_palette(bgr_key)?;
+			let (pal, a) = load(self.model, dep.arc)?;
 			dep.win.palette = pal;
-			dep.win.draw(&Sprite::from(bgr)).show(SCREEN_START);
+			self.assets = Some(a);
+
+			render(dep.win, self.assets.as_ref().unwrap(), self.frame);
+
 			dep.win.fade_in();
-
-			let ani = dep.arc.get(ani_key)?;
-
-			for dat in ani.chunks((ANIM_SIZE.width * ANIM_SIZE.height) as usize) {
-				self.ids.push(dep.win.draw(&Sprite::from(dat.to_vec()).with_size(ANIM_SIZE)).id);
-			}
 		} else {
-			dep.win.hide(self.ids[self.frame]);
-			self.frame = if self.frame + 1 < self.ids.len() { self.frame + 1 } else { 0 };
-			dep.win.show(self.ids[self.frame], ANIM_POS);
+			self.frame = if self.frame + 1 < self.assets.as_ref().unwrap().anim.len() {
+				self.frame + 1
+			} else {
+				0
+			};
+
+			render(dep.win, self.assets.as_ref().unwrap(), self.frame);
 
 			dep.win.present();
 		}
@@ -126,3 +117,25 @@ const KEYS: &[(&str, &str)] = &[
 const ANIM_DELAY: Duration = Duration::from_millis(100);
 const ANIM_SIZE: Size = Size::wh(88, 24); // 16 icons of 88x24 bytes each
 const ANIM_POS: Point = Point::xy(91, 97);
+
+fn load(model: Model, arc: &Archive) -> Result<(Vec<u8>, Assets)> {
+	let (bgr_key, ani_key) = KEYS[model as usize];
+
+	let (bgr, pal) = arc.get_with_palette(bgr_key)?;
+	let ani = arc.get(ani_key)?;
+
+	let a = Assets {
+		bgr: Sprite::from(bgr),
+		anim: ani
+			.chunks((ANIM_SIZE.width * ANIM_SIZE.height) as usize)
+			.map(|i| Sprite::from(i.to_vec()).with_size(ANIM_SIZE))
+			.collect(),
+	};
+
+	Ok((pal, a))
+}
+
+fn render(win: &mut Window, a: &Assets, frame: usize) {
+	win.draw(&a.bgr, SCREEN_START);
+	win.draw(&a.anim[frame], ANIM_POS);
+}

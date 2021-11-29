@@ -63,6 +63,12 @@ pub enum Model {
 	M200 = 2,
 }
 
+impl Default for Model {
+	fn default() -> Self {
+		Self::Esprit
+	}
+}
+
 impl Model {
 	pub fn next(&self) -> Self {
 		match self {

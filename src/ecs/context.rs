@@ -1,26 +1,35 @@
+use eyre::Result;
+use std::marker::PhantomData;
+use winit::{
+	event::{Event, WindowEvent},
+	event_loop::ControlFlow as WinitControlFlow,
+};
+use winit_input_helper::WinitInputHelper;
+
+use crate::systems::Window;
 use super::{
 	hlist::{Cons, Nil, Peek, Pluck, PluckInto},
 	system::{BoundSystem, System},
 };
-use eyre::Result;
-use std::marker::PhantomData;
 
 pub trait Context {
-	fn quit_requested(&self) -> bool;
 	fn step(&mut self) -> Result<()>;
 	fn destroy(&mut self) -> Result<()>;
-
-	fn run(&mut self) -> Result<()> {
-		while !self.quit_requested() {
-			self.step()?;
-		}
-
-		Ok(())
-	}
+	fn run(self) -> !;
 }
 
 pub struct ControlFlow {
 	pub quit_requested: bool,
+	pub input: WinitInputHelper,
+}
+
+impl ControlFlow {
+	fn new() -> Self {
+		Self {
+			quit_requested: false,
+			input: WinitInputHelper::new(),
+		}
+	}
 }
 
 pub struct ContextBuilder<SystemListT> {
@@ -31,7 +40,7 @@ impl ContextBuilder<Cons<InjectMut<ControlFlow>, Nil>> {
 	pub fn new() -> Self {
 		Self {
 			systems: Cons {
-				head: InjectMut(ControlFlow { quit_requested: false }),
+				head: InjectMut(ControlFlow::new()),
 				tail: Nil,
 			},
 		}
@@ -80,9 +89,11 @@ impl<SystemListT> ContextBuilder<SystemListT> {
 		})
 	}
 
-	pub fn build<ControlIndexT, IndicesT>(mut self) -> Result<ContextObject<SystemListT, (ControlIndexT, IndicesT)>>
+	pub fn build<ControlIndexT, WindowIndexT, IndicesT>(mut self) -> Result<ContextObject<SystemListT, (ControlIndexT, WindowIndexT, IndicesT)>>
 	where
-		SystemListT: SystemList<IndicesT> + Peek<ControlFlow, ControlIndexT>,
+		SystemListT: SystemList<IndicesT>
+			+ Peek<ControlFlow, ControlIndexT>
+			+ Peek<Window, WindowIndexT>,
 	{
 		SystemListT::setup_list(&mut self.systems)?;
 
@@ -134,14 +145,16 @@ where
 	}
 }
 
-impl<SystemListT, ControlIndexT, IndicesT> Context for ContextObject<SystemListT, (ControlIndexT, IndicesT)>
+impl<SystemListT, ControlIndexT, WindowIndexT, IndicesT> Context for ContextObject<SystemListT, (ControlIndexT, WindowIndexT, IndicesT)>
 where
-	SystemListT: SystemList<IndicesT> + Peek<ControlFlow, ControlIndexT>,
+	SystemListT: SystemList<IndicesT>
+		+ Peek<ControlFlow, ControlIndexT>
+		+ Peek<Window, WindowIndexT>,
+	SystemListT: 'static,
+	ControlIndexT: 'static,
+	WindowIndexT: 'static,
+	IndicesT: 'static,
 {
-	fn quit_requested(&self) -> bool {
-		self.systems().peek().quit_requested
-	}
-
 	fn step(&mut self) -> Result<()> {
 		SystemListT::update_list(self.systems_mut())
 	}
@@ -154,10 +167,53 @@ where
 		};
 
 		SystemListT::teardown_list(&mut systems)?;
-
 		SystemListT::destroy_list(systems)?;
 
 		Ok(())
+	}
+
+	fn run(mut self) -> ! {
+		let event_loop = {
+			let window: &mut Window = self.systems_mut().peek_mut();
+			window.event_loop.take().unwrap()
+		};
+
+		event_loop.run(move |event, _, control_flow| {
+			let update = match &event {
+				Event::WindowEvent { event, .. } if event == &WindowEvent::CloseRequested => {
+					*control_flow = WinitControlFlow::Exit;
+
+					return;
+				}
+				Event::LoopDestroyed => {
+					let win: &mut Window = self.systems_mut().peek_mut();
+					win.fade_out();
+
+					self.destroy().unwrap();
+
+					return;
+				}
+				_ => {
+					let flow: &mut ControlFlow = self.systems_mut().peek_mut();
+					flow.input.update(&event)
+				}
+			};
+
+			if update {
+				let result = self.step();
+
+				if result.is_err() {
+					*control_flow = WinitControlFlow::Exit;
+					return;
+				}
+
+				let flow: &mut ControlFlow = self.systems_mut().peek_mut();
+
+				if flow.quit_requested {
+					*control_flow = WinitControlFlow::Exit;
+				}
+			}
+		});
 	}
 }
 
