@@ -103,8 +103,6 @@ impl Default for Canvas {
 	}
 }
 
-pub type PaintFn = dyn FnOnce(&mut Canvas, &[u8]);
-
 pub enum FadeType {
 	In,
 	Out,

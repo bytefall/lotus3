@@ -1,13 +1,16 @@
-mod cache;
-mod script;
+use enum_dispatch::enum_dispatch;
+use eyre::Result;
+
 mod timer;
-mod window;
 
-pub use cache::Cache;
-pub use script::Script;
 pub use timer::Timer;
-pub use window::{Window, WindowConfig};
 
-pub mod game;
-pub mod intro;
-pub mod menu;
+#[enum_dispatch(SystemEnum)]
+pub trait System {
+	fn update(&mut self) -> Result<()>;
+}
+
+#[enum_dispatch]
+pub enum SystemEnum {
+	Timer,
+}

@@ -1,59 +1,24 @@
 #![allow(clippy::identity_op)]
 
-use crate::{
-	data::Archive,
-	ecs::{
-		context::{Context, ContextBuilder},
-		system::System as _,
-	},
-	game::{
-		options::Config,
-		script::CommandSequence,
-		state::{GameFlow, GameState},
-	},
-	systems::{
-		game::{AudioTuner, ModelSelect},
-		intro::{Intro, Protection},
-		menu::{DefineMenu, MainMenu},
-		Cache, Script, Timer, Window, WindowConfig,
-	},
-};
+use crate::{app::Application, data::Archive, engine::GameEngine, game::options::Config};
 
+mod app;
 mod data;
-#[macro_use]
-mod ecs;
+mod engine;
 mod game;
 mod graphics;
+mod screen;
 mod systems;
+mod task;
 
 fn main() -> eyre::Result<()> {
 	color_eyre::install()?;
 
 	let arc = Archive::open(&lotus3::ARCHIVE_FILE_NAME)?;
 	let cfg = Config::new();
+	let app = Application::new("Lotus III: The Ultimate Challenge")?;
 
-	ContextBuilder::new()
-		.inject(WindowConfig {
-			title: "Lotus III: The Ultimate Challenge",
-			width: 320,
-			height: 200,
-		})
-		.inject(arc)
-		.inject_mut(cfg)
-		.inject_mut(CommandSequence::new())
-		.inject_mut(GameFlow::new(GameState::Protection))
-		.system(Timer::bind())?
-		.system(Window::bind())?
-		.system(Cache::bind())?
-		// game systems
-		.system(Protection::bind())?
-		.system(Intro::bind())?
-		.system(MainMenu::bind())?
-		.system(DefineMenu::bind())?
-		.system(ModelSelect::bind())?
-		.system(AudioTuner::bind())?
-		// -end-
-		.system(Script::bind())?
-		.build()?
-		.run();
+	let mut game = GameEngine::new(arc, cfg, app.get_input(), app.get_screen()?, game::main)?;
+
+	app.run(move |ctx, signal| game.step(ctx, signal));
 }

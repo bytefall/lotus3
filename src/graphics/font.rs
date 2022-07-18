@@ -78,8 +78,8 @@ pub const CHAR_SET_04: CharSet = CharSet {
 	v_space: 10,
 };
 
-pub const CHAR_SET_06: CharSet = CharSet {
+/*pub const CHAR_SET_06: CharSet = CharSet {
 	chars: "0123456789",
 	h_space: 7,
 	v_space: 10,
-};
+};*/

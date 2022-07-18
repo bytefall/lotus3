@@ -5,11 +5,12 @@ authors = ["Oleg Scherbakov <scherbakov.oleg@gmail.com>"]
 edition = "2021"
 
 [dependencies]
+enum_dispatch = "0.3"
 eyre = "0.6.5"
 color-eyre = { version = "0.5.11", default-features = false }
 pixels = "0.8"
 winit = { version = "0.25", default-features = false, features = ["x11"] }
-winit_input_helper = "0.10"
+winput = { package = "winit_input_helper", version = "0.10" }
 wgpu = "0.11"
 
 [dev-dependencies]
