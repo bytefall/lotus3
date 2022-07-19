@@ -5,7 +5,7 @@ use winit::window::Window;
 
 use crate::{
 	graphics::{Canvas, Color, Drawable, FadeType, Point, Printable, SCREEN_BPP, SCREEN_HEIGHT, SCREEN_WIDTH},
-	task::{yield_now, CancellationTokenType},
+	task::yield_now,
 };
 
 pub struct Screen {
@@ -72,19 +72,19 @@ impl Screen {
 		self.pixels.render().unwrap();
 	}
 
-	pub async fn fade_in(&mut self, token: Option<&CancellationTokenType>) {
+	pub async fn fade_in(&mut self, cancel: Option<&dyn Fn() -> bool>) -> bool {
 		let fade = |src, factor| src * factor;
 
-		self.fade(fade, None, None, token).await;
+		self.fade(fade, None, None, cancel).await
 	}
 
-	pub async fn fade_out(&mut self, token: Option<&CancellationTokenType>) {
+	pub async fn fade_out(&mut self, cancel: Option<&dyn Fn() -> bool>) -> bool {
 		let fade = |src, factor| src * (1.0 - factor);
 
-		self.fade(fade, None, None, token).await;
+		self.fade(fade, None, None, cancel).await
 	}
 
-	pub async fn fade_out_by_color(&mut self, color: Color, token: Option<&CancellationTokenType>) {
+	pub async fn fade_out_by_color(&mut self, color: Color, cancel: Option<&dyn Fn() -> bool>) -> bool {
 		let fade = |src, factor| src * (1.0 - factor);
 
 		const FADE_KEY: u8 = 100;
@@ -100,7 +100,7 @@ impl Screen {
 
 		let filter = |px: &[u8]| px[3] == FADE_KEY;
 
-		self.fade(fade, Some(&prepare), Some(filter), token).await;
+		self.fade(fade, Some(&prepare), Some(filter), cancel).await
 	}
 
 	async fn fade(
@@ -108,8 +108,8 @@ impl Screen {
 		fade: fn(f64, f64) -> f64,
 		prepare: Option<&dyn Fn(&mut [u8])>,
 		filter: Option<fn(&[u8]) -> bool>,
-		token: Option<&CancellationTokenType>,
-	) {
+		cancel: Option<&dyn Fn() -> bool>,
+	) -> bool {
 		let start = Instant::now();
 		let mut source = self.pixels.get_frame().to_vec();
 
@@ -141,10 +141,12 @@ impl Screen {
 
 			yield_now().await;
 
-			if token.map_or(false, |t| t.borrow().cancelled()) {
-				break;
+			if cancel.as_ref().map_or(false, |f| f()) {
+				return true;
 			}
 		}
+
+		false
 	}
 
 	pub async fn fade_only(
@@ -152,8 +154,8 @@ impl Screen {
 		fade: FadeType,
 		back: &Canvas,
 		front: &Canvas,
-		token: Option<&CancellationTokenType>,
-	) {
+		cancel: Option<&dyn Fn() -> bool>,
+	) -> bool {
 		let start = Instant::now();
 
 		loop {
@@ -192,10 +194,12 @@ impl Screen {
 
 			yield_now().await;
 
-			if token.map_or(false, |t| t.borrow().cancelled()) {
-				break;
+			if cancel.as_ref().map_or(false, |f| f()) {
+				return true;
 			}
 		}
+
+		false
 	}
 
 	/*pub fn clear(&mut self) {

@@ -1,4 +1,5 @@
 use eyre::Result;
+use winit::event::VirtualKeyCode;
 
 use crate::{
 	engine::State,
@@ -6,53 +7,21 @@ use crate::{
 	task::sleep,
 };
 
-macro_rules! return_false {
-	($token:expr) => {
-		if $token.borrow().cancelled() {
-			$token.borrow_mut().clear();
+macro_rules! declare_cancel_fn {
+	($state:expr) => {
+		|| {
+			let input = $state.input.borrow();
 
-			return Ok(false);
+			input.key_pressed(VirtualKeyCode::Return) || input.key_pressed(VirtualKeyCode::Escape)
 		}
 	};
 }
 
-macro_rules! try_sleep {
-	($task:expr, $token:expr) => {
-		$task.with_token($token).await;
-
-		return_false!($token);
-	};
-}
-
-macro_rules! try_fade_in {
-	($screen:expr, $token:expr) => {
-		$screen.fade_in(Some($token)).await;
-
-		return_false!($token);
-	};
-}
-
-macro_rules! try_fade_out {
-	($screen:expr, $token:expr) => {
-		$screen.fade_out(Some($token)).await;
-
-		return_false!($token);
-	};
-}
-
-macro_rules! try_fade_out_by_color {
-	($screen:expr, $color:expr, $token:expr) => {
-		$screen.fade_out_by_color($color, Some($token)).await;
-
-		return_false!($token);
-	};
-}
-
-macro_rules! try_fade_only {
-	($screen:expr, $fade_type:expr, $back:expr, $front:expr, $token:expr) => {
-		$screen.fade_only($fade_type, $back, $front, Some($token)).await;
-
-		return_false!($token);
+macro_rules! try_ok {
+	($token:expr) => {
+		if $token {
+			return Ok(false);
+		}
 	};
 }
 
@@ -64,13 +33,14 @@ pub async fn show_gremlin(state: &mut State) -> Result<bool> {
 	state.screen.palette = pal;
 	state.screen.draw(&Sprite::from(q00), SCREEN_START);
 
-	try_fade_in!(state.screen, &state.token);
-	try_sleep!(sleep(200), &state.token);
+	let cancel = declare_cancel_fn!(state);
+	try_ok!(state.screen.fade_in(Some(&cancel)).await);
+	try_ok!(sleep(200).with_cancel(&cancel).await);
 
 	let q01 = state.arc.get_series("Q01", SPLASH_SIZE.width * SPLASH_SIZE.height)?;
 
 	for i in [0usize, 1, 2, 3, 2, 1, 0] {
-		let timer = sleep(100);
+		let timer = sleep(100).with_cancel(&cancel);
 
 		state.screen.draw(
 			&Sprite::from(q01.get(i).unwrap().to_vec()).with_size(SPLASH_SIZE),
@@ -78,11 +48,11 @@ pub async fn show_gremlin(state: &mut State) -> Result<bool> {
 		);
 		state.screen.present();
 
-		try_sleep!(timer, &state.token);
+		try_ok!(timer.await);
 	}
 
 	for i in [4usize, 5, 6, 7, 6, 5, 4] {
-		let timer = sleep(100);
+		let timer = sleep(100).with_cancel(&cancel);
 
 		state.screen.draw(
 			&Sprite::from(q01.get(i).unwrap().to_vec()).with_size(SPLASH_SIZE),
@@ -90,10 +60,10 @@ pub async fn show_gremlin(state: &mut State) -> Result<bool> {
 		);
 		state.screen.present();
 
-		try_sleep!(timer, &state.token);
+		try_ok!(timer.await);
 	}
 
-	try_fade_out!(state.screen, &state.token);
+	try_ok!(state.screen.fade_out(Some(&cancel)).await);
 
 	Ok(true)
 }
@@ -104,21 +74,22 @@ pub async fn show_magnetic_fields(state: &mut State) -> Result<bool> {
 		"Q12", "Q13", "Q14", "Q15", "Q16", "Q17",
 	];
 
-	let (_, pal) = state.arc.get_with_palette(KEYS.last().unwrap())?;
+	let cancel = declare_cancel_fn!(state);
 
+	let (_, pal) = state.arc.get_with_palette(KEYS.last().unwrap())?;
 	state.screen.palette = pal;
 
 	for key in KEYS {
-		let timer = sleep(50);
+		let timer = sleep(50).with_cancel(&cancel);
 
 		state.screen.draw(&Sprite::from(state.arc.get(key)?), SCREEN_START);
 		state.screen.present();
 
-		try_sleep!(timer, &state.token);
+		try_ok!(timer.await);
 	}
 
-	try_sleep!(sleep(1000), &state.token);
-	try_fade_out!(state.screen, &state.token);
+	try_ok!(sleep(1000).with_cancel(&cancel).await);
+	try_ok!(state.screen.fade_out(Some(&cancel)).await);
 
 	Ok(true)
 }
@@ -161,8 +132,9 @@ pub async fn show_credits(state: &mut State) -> Result<bool> {
 	state.screen.palette = pal;
 	state.screen.draw(&bgr, SCREEN_START);
 
-	try_fade_in!(state.screen, &state.token);
-	try_sleep!(sleep(2000), &state.token);
+	let cancel = declare_cancel_fn!(state);
+	try_ok!(state.screen.fade_in(Some(&cancel)).await);
+	try_ok!(sleep(2000).with_cancel(&cancel).await);
 
 	let mut front = Canvas::default();
 	let mut back = Canvas::default();
@@ -176,11 +148,16 @@ pub async fn show_credits(state: &mut State) -> Result<bool> {
 				front.print(i.0, &font, &state.screen.palette, (i.1, i.2).into());
 			}
 			None => {
-				try_fade_only!(state.screen, FadeType::In, &back, &front, &state.token);
-				try_sleep!(sleep(CREDITS_FADE_IN_TIMEOUT), &state.token);
+				try_ok!(state.screen.fade_only(FadeType::In, &back, &front, Some(&cancel)).await);
+				try_ok!(sleep(CREDITS_FADE_IN_TIMEOUT).with_cancel(&cancel).await);
 
-				try_fade_only!(state.screen, FadeType::Out, &back, &front, &state.token);
-				try_sleep!(sleep(CREDITS_FADE_OUT_TIMEOUT), &state.token);
+				try_ok!(
+					state
+						.screen
+						.fade_only(FadeType::Out, &back, &front, Some(&cancel))
+						.await
+				);
+				try_ok!(sleep(CREDITS_FADE_OUT_TIMEOUT).with_cancel(&cancel).await);
 
 				front = Canvas::default();
 			}
@@ -190,7 +167,7 @@ pub async fn show_credits(state: &mut State) -> Result<bool> {
 	let q1b = state.arc.get("Q1B")?;
 
 	for step in 1..=36 {
-		let timer = sleep(50);
+		let timer = sleep(50).with_cancel(&cancel);
 
 		let mut front = Canvas::default();
 		draw_a_car(&mut front, &q1b, &state.screen.palette, step);
@@ -199,16 +176,16 @@ pub async fn show_credits(state: &mut State) -> Result<bool> {
 		state.screen.blit(&front);
 		state.screen.present();
 
-		try_sleep!(timer, &state.token);
+		try_ok!(timer.await);
 	}
 
 	for key in ["Q1C", "Q1D"] {
-		let timer = sleep(50);
+		let timer = sleep(50).with_cancel(&cancel);
 
 		state.screen.draw(&Sprite::from(state.arc.get(key)?), SCREEN_START);
 		state.screen.present();
 
-		try_sleep!(timer, &state.token);
+		try_ok!(timer.await);
 	}
 
 	let q1e = state.arc.get("Q1E")?;
@@ -217,7 +194,7 @@ pub async fn show_credits(state: &mut State) -> Result<bool> {
 	state.screen.draw(&Sprite::from(q1e), SCREEN_START);
 	state.screen.present();
 
-	try_sleep!(sleep(2000), &state.token);
+	try_ok!(sleep(2000).with_cancel(&cancel).await);
 
 	let color = state
 		.screen
@@ -225,9 +202,9 @@ pub async fn show_credits(state: &mut State) -> Result<bool> {
 		.get(color_ix * 3..color_ix * 3 + 3)
 		.map(|rgb| Color::rgb(rgb[0] << 2, rgb[1] << 2, rgb[2] << 2));
 
-	try_fade_out_by_color!(state.screen, color.unwrap(), &state.token);
-	try_sleep!(sleep(4000), &state.token);
-	try_fade_out!(state.screen, &state.token);
+	try_ok!(state.screen.fade_out_by_color(color.unwrap(), Some(&cancel)).await);
+	try_ok!(sleep(4000).with_cancel(&cancel).await);
+	try_ok!(state.screen.fade_out(Some(&cancel)).await);
 
 	Ok(true)
 }
@@ -269,9 +246,10 @@ pub async fn show_lotus_logo(state: &mut State) -> Result<bool> {
 	state.screen.palette = pal;
 	state.screen.draw(&Sprite::from(q18), SCREEN_START);
 
-	try_fade_in!(state.screen, &state.token);
-	try_sleep!(sleep(2000), &state.token);
-	try_fade_out!(state.screen, &state.token);
+	let cancel = declare_cancel_fn!(state);
+	try_ok!(state.screen.fade_in(Some(&cancel)).await);
+	try_ok!(sleep(2000).with_cancel(&cancel).await);
+	try_ok!(state.screen.fade_out(Some(&cancel)).await);
 
 	Ok(true)
 }
@@ -306,8 +284,10 @@ pub async fn show_magazine(state: &mut State) -> Result<bool> {
 	back.draw(&bgr, &state.screen.palette, SCREEN_START);
 	state.screen.draw(&bgr, SCREEN_START);
 
+	let cancel = declare_cancel_fn!(state);
+
 	for key in KEYS {
-		let timer = sleep(100);
+		let timer = sleep(100).with_cancel(&cancel);
 
 		let (vxx, pal) = get_with_leading_pal(state.arc.get(key)?, &state.screen.palette)?;
 		let vxx = Sprite::from(vxx).with_size(VIDEO_SIZE);
@@ -316,7 +296,7 @@ pub async fn show_magazine(state: &mut State) -> Result<bool> {
 		state.screen.draw(&vxx, VIDEO_POS);
 
 		if Some(&key) == KEYS.first() {
-			try_fade_in!(state.screen, &state.token);
+			try_ok!(state.screen.fade_in(Some(&cancel)).await);
 		} else {
 			state.screen.present();
 
@@ -326,10 +306,15 @@ pub async fn show_magazine(state: &mut State) -> Result<bool> {
 			}
 		}
 
-		try_sleep!(timer, &state.token);
+		try_ok!(timer.await);
 	}
 
-	try_fade_only!(state.screen, FadeType::Out, &back, &front, &state.token);
+	try_ok!(
+		state
+			.screen
+			.fade_only(FadeType::Out, &back, &front, Some(&cancel))
+			.await
+	);
 
 	let (v33, pal) = get_with_leading_pal(state.arc.get("V33")?, &state.screen.palette)?;
 
@@ -340,9 +325,9 @@ pub async fn show_magazine(state: &mut State) -> Result<bool> {
 		VIDEO_POS,
 	);
 
-	try_fade_only!(state.screen, FadeType::In, &back, &front, &state.token);
-	try_sleep!(sleep(2000), &state.token);
-	try_fade_out!(state.screen, &state.token);
+	try_ok!(state.screen.fade_only(FadeType::In, &back, &front, Some(&cancel)).await);
+	try_ok!(sleep(2000).with_cancel(&cancel).await);
+	try_ok!(state.screen.fade_out(Some(&cancel)).await);
 
 	Ok(true)
 }

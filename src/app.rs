@@ -81,11 +81,8 @@ impl Application {
 			match &event {
 				Event::WindowEvent { event, .. } if event == &WindowEvent::CloseRequested => {
 					*control_flow = ControlFlow::Exit;
-					return;
 				}
-				Event::LoopDestroyed => {
-					return;
-				}
+				Event::LoopDestroyed => {}
 				_ => {
 					if self.input.borrow_mut().update(&event) {
 						let result = step(&mut ctx, &signal);

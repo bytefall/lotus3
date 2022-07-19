@@ -1,45 +1,42 @@
 use std::{
 	future::Future,
 	pin::Pin,
-	rc::Rc,
 	task::{Context, Poll},
 	time::{Duration, Instant},
 };
 
-use super::CancellationTokenType;
-
-pub struct Timer {
+pub struct Timer<'a> {
 	instant: Instant,
 	duration: Duration,
-	token: Option<CancellationTokenType>,
+	cancel: Option<&'a dyn Fn() -> bool>,
 }
 
-impl Timer {
+impl<'a> Timer<'a> {
 	pub fn new(duration: Duration) -> Self {
 		Self {
 			instant: Instant::now(),
 			duration,
-			token: None,
+			cancel: None,
 		}
 	}
 
-	pub fn with_token(mut self, token: &CancellationTokenType) -> Self {
-		self.token = Some(Rc::clone(token));
+	pub fn with_cancel(mut self, cancel: &'a dyn Fn() -> bool) -> Self {
+		self.cancel = Some(cancel);
 		self
 	}
 }
 
-impl Future for Timer {
-	type Output = ();
+impl Future for Timer<'_> {
+	type Output = bool;
 
 	fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
 		let time_spent = self.instant.elapsed();
 
 		if time_spent >= self.duration {
-			Poll::Ready(())
+			Poll::Ready(false)
 		} else {
-			if time_spent.as_millis() > 0 && self.token.as_ref().map_or(false, |t| t.borrow().cancelled()) {
-				return Poll::Ready(());
+			if time_spent.as_millis() > 0 && self.cancel.as_ref().map_or(false, |f| f()) {
+				return Poll::Ready(true);
 			}
 
 			cx.waker().wake_by_ref();

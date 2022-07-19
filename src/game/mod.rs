@@ -1,6 +1,4 @@
 use eyre::Result;
-use winit::event::VirtualKeyCode;
-use winput::WinitInputHelper;
 
 use crate::engine::State;
 
@@ -17,16 +15,12 @@ use screen::*;
 pub async fn main(mut state: State) -> Result<()> {
 	protection(&mut state).await?;
 
-	*state.on_cancel.borrow_mut() = Some(on_input_break);
-
 	let mut ok = true; // ok = false when an async operation has been cancelled
 	ok = ok && show_gremlin(&mut state).await?;
 	ok = ok && show_magnetic_fields(&mut state).await?;
 	ok = ok && show_credits(&mut state).await?;
 	ok = ok && show_lotus_logo(&mut state).await?;
 	ok = ok && show_magazine(&mut state).await?;
-
-	*state.on_cancel.borrow_mut() = None;
 
 	if !ok {
 		state.screen.fade_out(None).await;
@@ -72,8 +66,4 @@ pub async fn main(mut state: State) -> Result<()> {
 	}
 
 	Ok(())
-}
-
-pub fn on_input_break(input: &WinitInputHelper) -> bool {
-	input.key_pressed(VirtualKeyCode::Escape) || input.key_pressed(VirtualKeyCode::Space)
 }
