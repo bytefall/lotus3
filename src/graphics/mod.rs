@@ -103,11 +103,6 @@ impl Default for Canvas {
 	}
 }
 
-pub enum FadeType {
-	In,
-	Out,
-}
-
 mod bitmap;
 pub mod font;
 mod frame;

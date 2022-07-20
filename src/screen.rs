@@ -4,7 +4,7 @@ use std::time::Instant;
 use winit::window::Window;
 
 use crate::{
-	graphics::{Canvas, Color, Drawable, FadeType, Point, Printable, SCREEN_BPP, SCREEN_HEIGHT, SCREEN_WIDTH},
+	graphics::{Canvas, Color, Drawable, Point, Printable, SCREEN_BPP, SCREEN_HEIGHT, SCREEN_WIDTH},
 	task::yield_now,
 };
 
@@ -149,9 +149,21 @@ impl Screen {
 		false
 	}
 
-	pub async fn fade_only(
+	pub async fn fade_in_only(&mut self, back: &Canvas, front: &Canvas, cancel: Option<&dyn Fn() -> bool>) -> bool {
+		let fade = |factor| factor;
+
+		self.fade_only(fade, back, front, cancel).await
+	}
+
+	pub async fn fade_out_only(&mut self, back: &Canvas, front: &Canvas, cancel: Option<&dyn Fn() -> bool>) -> bool {
+		let fade = |factor| 1.0 - factor;
+
+		self.fade_only(fade, back, front, cancel).await
+	}
+
+	async fn fade_only(
 		&mut self,
-		fade: FadeType,
+		fade: fn(f64) -> f64,
 		back: &Canvas,
 		front: &Canvas,
 		cancel: Option<&dyn Fn() -> bool>,
@@ -161,11 +173,7 @@ impl Screen {
 		loop {
 			let ticks = Instant::now().duration_since(start).as_secs_f64() * 280.0;
 			let factor = (ticks / 6.0 / 16.0).clamp(0.0, 1.0);
-			let alpha = if matches!(fade, FadeType::Out) {
-				1.0 - factor
-			} else {
-				factor
-			};
+			let alpha = fade(factor);
 
 			let mut dst_iter = self.pixels.get_frame().chunks_exact_mut(SCREEN_BPP as usize);
 			let mut src_iter = back.get().chunks_exact(SCREEN_BPP as usize);

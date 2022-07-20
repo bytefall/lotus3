@@ -3,7 +3,7 @@ use winit::event::VirtualKeyCode;
 
 use crate::{
 	engine::State,
-	graphics::{Canvas, Color, FadeType, Point, Size, Sprite, SpriteFont, SCREEN_START},
+	graphics::{Canvas, Color, Point, Size, Sprite, SpriteFont, SCREEN_START},
 	task::sleep,
 };
 
@@ -148,15 +148,10 @@ pub async fn show_credits(state: &mut State) -> Result<bool> {
 				front.print(i.0, &font, &state.screen.palette, (i.1, i.2).into());
 			}
 			None => {
-				try_ok!(state.screen.fade_only(FadeType::In, &back, &front, Some(&cancel)).await);
+				try_ok!(state.screen.fade_in_only(&back, &front, Some(&cancel)).await);
 				try_ok!(sleep(CREDITS_FADE_IN_TIMEOUT).with_cancel(&cancel).await);
 
-				try_ok!(
-					state
-						.screen
-						.fade_only(FadeType::Out, &back, &front, Some(&cancel))
-						.await
-				);
+				try_ok!(state.screen.fade_out_only(&back, &front, Some(&cancel)).await);
 				try_ok!(sleep(CREDITS_FADE_OUT_TIMEOUT).with_cancel(&cancel).await);
 
 				front = Canvas::default();
@@ -309,12 +304,7 @@ pub async fn show_magazine(state: &mut State) -> Result<bool> {
 		try_ok!(timer.await);
 	}
 
-	try_ok!(
-		state
-			.screen
-			.fade_only(FadeType::Out, &back, &front, Some(&cancel))
-			.await
-	);
+	try_ok!(state.screen.fade_out_only(&back, &front, Some(&cancel)).await);
 
 	let (v33, pal) = get_with_leading_pal(state.arc.get("V33")?, &state.screen.palette)?;
 
@@ -325,7 +315,7 @@ pub async fn show_magazine(state: &mut State) -> Result<bool> {
 		VIDEO_POS,
 	);
 
-	try_ok!(state.screen.fade_only(FadeType::In, &back, &front, Some(&cancel)).await);
+	try_ok!(state.screen.fade_in_only(&back, &front, Some(&cancel)).await);
 	try_ok!(sleep(2000).with_cancel(&cancel).await);
 	try_ok!(state.screen.fade_out(Some(&cancel)).await);
 
