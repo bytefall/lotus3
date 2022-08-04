@@ -7,12 +7,14 @@ use crate::{
 	task::sleep,
 };
 
-macro_rules! declare_cancel_fn {
+macro_rules! cancel_fn {
 	($state:expr) => {
 		|| {
 			let input = $state.input.borrow();
 
-			input.key_pressed(VirtualKeyCode::Return) || input.key_pressed(VirtualKeyCode::Escape)
+			input.key_pressed(VirtualKeyCode::Return)
+				|| input.key_pressed(VirtualKeyCode::Escape)
+				|| input.key_pressed(VirtualKeyCode::Space)
 		}
 	};
 }
@@ -33,17 +35,17 @@ pub async fn show_gremlin(state: &mut State) -> Result<bool> {
 	state.screen.palette = pal;
 	state.screen.draw(&Sprite::from(q00), SCREEN_START);
 
-	let cancel = declare_cancel_fn!(state);
+	let cancel = cancel_fn!(state);
 	try_ok!(state.screen.fade_in(Some(&cancel)).await);
 	try_ok!(sleep(200).with_cancel(&cancel).await);
 
-	let q01 = state.arc.get_series("Q01", SPLASH_SIZE.width * SPLASH_SIZE.height)?;
+	let stars = state.arc.get_series("Q01", SPLASH_SIZE.width * SPLASH_SIZE.height)?;
 
 	for i in [0usize, 1, 2, 3, 2, 1, 0] {
 		let timer = sleep(100).with_cancel(&cancel);
 
 		state.screen.draw(
-			&Sprite::from(q01.get(i).unwrap().to_vec()).with_size(SPLASH_SIZE),
+			&Sprite::from(stars[i].to_vec()).with_size(SPLASH_SIZE),
 			(112, 85).into(),
 		);
 		state.screen.present();
@@ -55,7 +57,7 @@ pub async fn show_gremlin(state: &mut State) -> Result<bool> {
 		let timer = sleep(100).with_cancel(&cancel);
 
 		state.screen.draw(
-			&Sprite::from(q01.get(i).unwrap().to_vec()).with_size(SPLASH_SIZE),
+			&Sprite::from(stars[i].to_vec()).with_size(SPLASH_SIZE),
 			(144, 110).into(),
 		);
 		state.screen.present();
@@ -74,7 +76,7 @@ pub async fn show_magnetic_fields(state: &mut State) -> Result<bool> {
 		"Q12", "Q13", "Q14", "Q15", "Q16", "Q17",
 	];
 
-	let cancel = declare_cancel_fn!(state);
+	let cancel = cancel_fn!(state);
 
 	let (_, pal) = state.arc.get_with_palette(KEYS.last().unwrap())?;
 	state.screen.palette = pal;
@@ -132,7 +134,7 @@ pub async fn show_credits(state: &mut State) -> Result<bool> {
 	state.screen.palette = pal;
 	state.screen.draw(&bgr, SCREEN_START);
 
-	let cancel = declare_cancel_fn!(state);
+	let cancel = cancel_fn!(state);
 	try_ok!(state.screen.fade_in(Some(&cancel)).await);
 	try_ok!(sleep(2000).with_cancel(&cancel).await);
 
@@ -142,10 +144,10 @@ pub async fn show_credits(state: &mut State) -> Result<bool> {
 
 	let font = SpriteFont::from(state.arc.get("Q1A")?);
 
-	for item in &CREDITS {
+	for item in CREDITS {
 		match item {
-			Some(i) => {
-				front.print(i.0, &font, &state.screen.palette, (i.1, i.2).into());
+			Some((text, x, y)) => {
+				front.print(text, &font, &state.screen.palette, (x, y).into());
 			}
 			None => {
 				try_ok!(state.screen.fade_in_only(&back, &front, Some(&cancel)).await);
@@ -241,7 +243,7 @@ pub async fn show_lotus_logo(state: &mut State) -> Result<bool> {
 	state.screen.palette = pal;
 	state.screen.draw(&Sprite::from(q18), SCREEN_START);
 
-	let cancel = declare_cancel_fn!(state);
+	let cancel = cancel_fn!(state);
 	try_ok!(state.screen.fade_in(Some(&cancel)).await);
 	try_ok!(sleep(2000).with_cancel(&cancel).await);
 	try_ok!(state.screen.fade_out(Some(&cancel)).await);
@@ -279,7 +281,7 @@ pub async fn show_magazine(state: &mut State) -> Result<bool> {
 	back.draw(&bgr, &state.screen.palette, SCREEN_START);
 	state.screen.draw(&bgr, SCREEN_START);
 
-	let cancel = declare_cancel_fn!(state);
+	let cancel = cancel_fn!(state);
 
 	for key in KEYS {
 		let timer = sleep(100).with_cancel(&cancel);
