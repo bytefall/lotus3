@@ -147,6 +147,19 @@ macro_rules! switch_option {
 	($opt:expr, $v1:expr, $v2:expr) => {
 		$opt = if $opt == $v1 { $v2 } else { $v1 }
 	};
+	($opt:expr, $v1:expr, $v2:expr, $v3:expr, $v4:expr, $v5:expr) => {
+		$opt = if $opt == $v1 {
+			$v2
+		} else if $opt == $v2 {
+			$v3
+		} else if $opt == $v3 {
+			$v4
+		} else if $opt == $v4 {
+			$v5
+		} else {
+			$v1
+		}
+	};
 }
 
 enum Menu {
@@ -227,13 +240,14 @@ fn handle_input(
 				key_pressed = true;
 			}
 			(2, 1) => {
-				cfg.course = match cfg.course {
-					Course::T1 => Course::T2,
-					Course::T2 => Course::T3,
-					Course::T3 => Course::Circular,
-					Course::Circular => Course::Unknown,
-					Course::Unknown => Course::T1,
-				};
+				switch_option!(
+					cfg.course,
+					Course::T1,
+					Course::T2,
+					Course::T3,
+					Course::Circular,
+					Course::Unknown
+				);
 				key_pressed = true;
 			}
 			(2, 2) => {
