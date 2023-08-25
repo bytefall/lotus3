@@ -8,16 +8,14 @@ pub struct Frame {
 
 impl Frame {
 	pub fn new(size: Size) -> Self {
-		Self {
-			size,
-		}
+		Self { size }
 	}
 }
 
 impl Drawable for Frame {
 	fn draw(&self, buffer: &mut [u8], pal: &[u8]) {
-		let width = self.width() - FRAME_BORDER;		// inner width
-		let height = self.height() - FRAME_BORDER;		// inner height
+		let width = self.width() - FRAME_BORDER; // inner width
+		let height = self.height() - FRAME_BORDER; // inner height
 
 		use FrameColor::*;
 

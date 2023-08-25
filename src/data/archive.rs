@@ -1,4 +1,4 @@
-use eyre::{eyre, WrapErr, Result};
+use eyre::{eyre, Result, WrapErr};
 use std::{
 	cell::RefCell,
 	collections::HashMap,
@@ -25,8 +25,7 @@ pub struct Archive {
 
 impl Archive {
 	pub fn open(path: &dyn AsRef<Path>) -> Result<Archive> {
-		let file = File::open(path)
-			.wrap_err_with(|| format!("Failed to open \"{}\"!", path.as_ref().to_str().unwrap_or("")))?;
+		let file = File::open(path).wrap_err_with(|| format!("Failed to open '{}'!", path.as_ref().display()))?;
 
 		let mut file = BufReader::new(file);
 		file.seek(SeekFrom::Start(TABLE_OFFSET))?;
@@ -49,7 +48,7 @@ impl Archive {
 			items.entry(key.to_string()).or_insert(Item { offset, length: 0 });
 
 			if let Some(prev) = items.get_mut(&prev_key) {
-				(*prev).length = offset - (*prev).offset;
+				prev.length = offset - prev.offset;
 			}
 
 			prev_key = key.to_string();
@@ -62,17 +61,25 @@ impl Archive {
 	}
 
 	pub fn get(&self, key: &str) -> Result<Vec<u8>> {
-		let item = self.items.get(&key.to_string())
-			.ok_or_else(|| eyre!("Item \"{}\" is not found!", key))?;
+		let item = self
+			.items
+			.get(key)
+			.ok_or_else(|| eyre!("Item '{}' is not found!", key))?;
 
 		let mut file = self.file.borrow_mut();
 		file.seek(SeekFrom::Start(item.offset.into()))?;
 
 		let mut buffer = vec![0; item.length as usize];
-		file.read_exact(&mut buffer)
-			.wrap_err_with(|| eyre!("Failed to read {} byte(s) at {} for \"{}\"!", item.length, item.offset, key))?;
+		file.read_exact(&mut buffer).wrap_err_with(|| {
+			eyre!(
+				"Failed to read {} byte(s) at {} for '{}'!",
+				item.length,
+				item.offset,
+				key
+			)
+		})?;
 
-		zip::unpack(&buffer).ok_or_else(|| eyre!("Failed to unpack \"{}\"!", key))
+		zip::unpack(&buffer).ok_or_else(|| eyre!("Failed to unpack '{}'!", key))
 	}
 
 	pub fn get_with_palette(&self, key: &str) -> Result<(Vec<u8>, Vec<u8>)> {

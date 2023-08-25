@@ -1,4 +1,3 @@
-#[rustfmt::skip]
 use crate::graphics::{Point, SCREEN_BPP, SCREEN_WIDTH};
 
 pub struct Bitmap {
@@ -8,7 +7,7 @@ pub struct Bitmap {
 impl Bitmap {
 	pub fn from(data: Vec<u8>, par1: u8, par2: u8) -> Self {
 		Self {
-			data: decode(data, par1, par2)
+			data: decode(data, par1, par2),
 		}
 	}
 
@@ -51,12 +50,11 @@ impl Bitmap {
 }
 
 const VAR_30A7: &[u8] = &[
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0A, 0x0A, 0x0A, 0x0A, 0x0A, 0x14, 0x14, 0x14, 0x14,
-	0x14, 0x1E, 0x1E, 0x1E, 0x1E, 0x1E, 0x28, 0x28, 0x28, 0x32, 0x32, 0x32, 0x3C, 0x3C, 0x3C, 0x46,
-	0x46, 0x46, 0x50, 0x50, 0x50, 0x5A, 0x5A, 0x5A, 0x64, 0x64, 0x64, 0x6E, 0x6E, 0x6E, 0x78, 0x78,
-	0x78, 0x82, 0x82, 0x82, 0x8C, 0x8C, 0x8C, 0x96, 0x96, 0x96, 0xA0, 0xA0, 0xA0, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x02, 0x07, 0xFF,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0A, 0x0A, 0x0A, 0x0A, 0x0A, 0x14, 0x14, 0x14, 0x14, 0x14, 0x1E, 0x1E,
+	0x1E, 0x1E, 0x1E, 0x28, 0x28, 0x28, 0x32, 0x32, 0x32, 0x3C, 0x3C, 0x3C, 0x46, 0x46, 0x46, 0x50, 0x50, 0x50, 0x5A,
+	0x5A, 0x5A, 0x64, 0x64, 0x64, 0x6E, 0x6E, 0x6E, 0x78, 0x78, 0x78, 0x82, 0x82, 0x82, 0x8C, 0x8C, 0x8C, 0x96, 0x96,
+	0x96, 0xA0, 0xA0, 0xA0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x02, 0x07, 0xFF,
 ];
 
 pub fn decode(mut data: Vec<u8>, word_2e78_ah: u8, word_2e78_al: u8) -> Vec<u8> {
@@ -170,29 +168,129 @@ enum Code {
 }
 
 macro_rules! op {
-	($a:expr) => { &[Code::Draw($a)] };
-	(+$a:expr) => { &[Code::Skip($a)] };
+	($a:expr) => {
+		&[Code::Draw($a)]
+	};
 
-	($a:expr, +$b:expr) => { &[Code::Draw($a), Code::Skip($b)] };
-	(+$a:expr, $b:expr) => { &[Code::Skip($a), Code::Draw($b)] };
+	(+$a:expr) => {
+		&[Code::Skip($a)]
+	};
 
-	($a:expr, +$b:expr, $c:expr) => { &[Code::Draw($a), Code::Skip($b), Code::Draw($c)] };
-	(+$a:expr, $b:expr, +$c:expr) => { &[Code::Skip($a), Code::Draw($b), Code::Skip($c)] };
+	($a:expr, +$b:expr) => {
+		&[Code::Draw($a), Code::Skip($b)]
+	};
 
-	($a:expr, +$b:expr, $c:expr, +$d:expr) => { &[Code::Draw($a), Code::Skip($b), Code::Draw($c), Code::Skip($d)] };
-	(+$a:expr, $b:expr, +$c:expr, $d:expr) => { &[Code::Skip($a), Code::Draw($b), Code::Skip($c), Code::Draw($d)] };
+	(+$a:expr, $b:expr) => {
+		&[Code::Skip($a), Code::Draw($b)]
+	};
 
-	($a:expr, +$b:expr, $c:expr, +$d:expr, $e:expr) => { &[Code::Draw($a), Code::Skip($b), Code::Draw($c), Code::Skip($d), Code::Draw($e)] };
-	(+$a:expr, $b:expr, +$c:expr, $d:expr, +$e:expr) => { &[Code::Skip($a), Code::Draw($b), Code::Skip($c), Code::Draw($d), Code::Skip($e)] };
+	($a:expr, +$b:expr, $c:expr) => {
+		&[Code::Draw($a), Code::Skip($b), Code::Draw($c)]
+	};
 
-	($a:expr, +$b:expr, $c:expr, +$d:expr, $e:expr, +$f:expr) => { &[Code::Draw($a), Code::Skip($b), Code::Draw($c), Code::Skip($d), Code::Draw($e), Code::Skip($f)] };
-	(+$a:expr, $b:expr, +$c:expr, $d:expr, +$e:expr, $f:expr) => { &[Code::Skip($a), Code::Draw($b), Code::Skip($c), Code::Draw($d), Code::Skip($e), Code::Draw($f)] };
+	(+$a:expr, $b:expr, +$c:expr) => {
+		&[Code::Skip($a), Code::Draw($b), Code::Skip($c)]
+	};
 
-	($a:expr, +$b:expr, $c:expr, +$d:expr, $e:expr, +$f:expr, $g:expr) => { &[Code::Draw($a), Code::Skip($b), Code::Draw($c), Code::Skip($d), Code::Draw($e), Code::Skip($f), Code::Draw($g)] };
-	(+$a:expr, $b:expr, +$c:expr, $d:expr, +$e:expr, $f:expr, +$g:expr) => { &[Code::Skip($a), Code::Draw($b), Code::Skip($c), Code::Draw($d), Code::Skip($e), Code::Draw($f), Code::Skip($g)] };
+	($a:expr, +$b:expr, $c:expr, +$d:expr) => {
+		&[Code::Draw($a), Code::Skip($b), Code::Draw($c), Code::Skip($d)]
+	};
 
-	($a:expr, +$b:expr, $c:expr, +$d:expr, $e:expr, +$f:expr, $g:expr, +$h:expr) => { &[Code::Draw($a), Code::Skip($b), Code::Draw($c), Code::Skip($d), Code::Draw($e), Code::Skip($f), Code::Draw($g), Code::Skip($h)] };
-	(+$a:expr, $b:expr, +$c:expr, $d:expr, +$e:expr, $f:expr, +$g:expr, $h:expr) => { &[Code::Skip($a), Code::Draw($b), Code::Skip($c), Code::Draw($d), Code::Skip($e), Code::Draw($f), Code::Skip($g), Code::Draw($h)] };
+	(+$a:expr, $b:expr, +$c:expr, $d:expr) => {
+		&[Code::Skip($a), Code::Draw($b), Code::Skip($c), Code::Draw($d)]
+	};
+
+	($a:expr, +$b:expr, $c:expr, +$d:expr, $e:expr) => {
+		&[
+			Code::Draw($a),
+			Code::Skip($b),
+			Code::Draw($c),
+			Code::Skip($d),
+			Code::Draw($e),
+		]
+	};
+
+	(+$a:expr, $b:expr, +$c:expr, $d:expr, +$e:expr) => {
+		&[
+			Code::Skip($a),
+			Code::Draw($b),
+			Code::Skip($c),
+			Code::Draw($d),
+			Code::Skip($e),
+		]
+	};
+
+	($a:expr, +$b:expr, $c:expr, +$d:expr, $e:expr, +$f:expr) => {
+		&[
+			Code::Draw($a),
+			Code::Skip($b),
+			Code::Draw($c),
+			Code::Skip($d),
+			Code::Draw($e),
+			Code::Skip($f),
+		]
+	};
+
+	(+$a:expr, $b:expr, +$c:expr, $d:expr, +$e:expr, $f:expr) => {
+		&[
+			Code::Skip($a),
+			Code::Draw($b),
+			Code::Skip($c),
+			Code::Draw($d),
+			Code::Skip($e),
+			Code::Draw($f),
+		]
+	};
+
+	($a:expr, +$b:expr, $c:expr, +$d:expr, $e:expr, +$f:expr, $g:expr) => {
+		&[
+			Code::Draw($a),
+			Code::Skip($b),
+			Code::Draw($c),
+			Code::Skip($d),
+			Code::Draw($e),
+			Code::Skip($f),
+			Code::Draw($g),
+		]
+	};
+
+	(+$a:expr, $b:expr, +$c:expr, $d:expr, +$e:expr, $f:expr, +$g:expr) => {
+		&[
+			Code::Skip($a),
+			Code::Draw($b),
+			Code::Skip($c),
+			Code::Draw($d),
+			Code::Skip($e),
+			Code::Draw($f),
+			Code::Skip($g),
+		]
+	};
+
+	($a:expr, +$b:expr, $c:expr, +$d:expr, $e:expr, +$f:expr, $g:expr, +$h:expr) => {
+		&[
+			Code::Draw($a),
+			Code::Skip($b),
+			Code::Draw($c),
+			Code::Skip($d),
+			Code::Draw($e),
+			Code::Skip($f),
+			Code::Draw($g),
+			Code::Skip($h),
+		]
+	};
+
+	(+$a:expr, $b:expr, +$c:expr, $d:expr, +$e:expr, $f:expr, +$g:expr, $h:expr) => {
+		&[
+			Code::Skip($a),
+			Code::Draw($b),
+			Code::Skip($c),
+			Code::Draw($d),
+			Code::Skip($e),
+			Code::Draw($f),
+			Code::Skip($g),
+			Code::Draw($h),
+		]
+	};
 }
 
 const OP_CODES: &[&[Code]] = &[

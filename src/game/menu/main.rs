@@ -90,16 +90,13 @@ pub async fn main_menu(state: &mut State) -> Result<Action> {
 			break action;
 		}
 
-		match menu {
-			Some(menu) => {
-				first_time = true;
-				state.screen.fade_out(None).await;
+		if let Some(menu) = menu {
+			first_time = true;
+			state.screen.fade_out(None).await;
 
-				match menu {
-					Menu::Define => define_menu(state).await?,
-				}
+			match menu {
+				Menu::Define => define_menu(state).await?,
 			}
-			None => {}
 		}
 
 		if first_time || key_pressed {

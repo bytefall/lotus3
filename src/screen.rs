@@ -13,6 +13,10 @@ pub struct Screen {
 	pub palette: Vec<u8>,
 }
 
+pub type CancelFn<'a> = Option<&'a dyn Fn() -> bool>;
+
+type PrepareFn<'a> = Option<&'a dyn Fn(&mut [u8])>;
+
 impl Screen {
 	pub fn from_window(window: &Window) -> Result<Self> {
 		let size = window.inner_size();
@@ -72,19 +76,19 @@ impl Screen {
 		self.pixels.render().unwrap();
 	}
 
-	pub async fn fade_in(&mut self, cancel: Option<&dyn Fn() -> bool>) -> bool {
+	pub async fn fade_in(&mut self, cancel: CancelFn<'_>) -> bool {
 		let fade = |src, factor| src * factor;
 
 		self.fade(fade, None, None, cancel).await
 	}
 
-	pub async fn fade_out(&mut self, cancel: Option<&dyn Fn() -> bool>) -> bool {
+	pub async fn fade_out(&mut self, cancel: CancelFn<'_>) -> bool {
 		let fade = |src, factor| src * (1.0 - factor);
 
 		self.fade(fade, None, None, cancel).await
 	}
 
-	pub async fn fade_out_by_color(&mut self, color: Color, cancel: Option<&dyn Fn() -> bool>) -> bool {
+	pub async fn fade_out_by_color(&mut self, color: Color, cancel: CancelFn<'_>) -> bool {
 		let fade = |src, factor| src * (1.0 - factor);
 
 		const FADE_KEY: u8 = 100;
@@ -106,9 +110,9 @@ impl Screen {
 	async fn fade(
 		&mut self,
 		fade: fn(f64, f64) -> f64,
-		prepare: Option<&dyn Fn(&mut [u8])>,
+		prepare: PrepareFn<'_>,
 		filter: Option<fn(&[u8]) -> bool>,
-		cancel: Option<&dyn Fn() -> bool>,
+		cancel: CancelFn<'_>,
 	) -> bool {
 		let start = Instant::now();
 		let mut source = self.pixels.get_frame().to_vec();
@@ -149,25 +153,19 @@ impl Screen {
 		false
 	}
 
-	pub async fn fade_in_only(&mut self, back: &Canvas, front: &Canvas, cancel: Option<&dyn Fn() -> bool>) -> bool {
+	pub async fn fade_in_only(&mut self, back: &Canvas, front: &Canvas, cancel: CancelFn<'_>) -> bool {
 		let fade = |factor| factor;
 
 		self.fade_only(fade, back, front, cancel).await
 	}
 
-	pub async fn fade_out_only(&mut self, back: &Canvas, front: &Canvas, cancel: Option<&dyn Fn() -> bool>) -> bool {
+	pub async fn fade_out_only(&mut self, back: &Canvas, front: &Canvas, cancel: CancelFn<'_>) -> bool {
 		let fade = |factor| 1.0 - factor;
 
 		self.fade_only(fade, back, front, cancel).await
 	}
 
-	async fn fade_only(
-		&mut self,
-		fade: fn(f64) -> f64,
-		back: &Canvas,
-		front: &Canvas,
-		cancel: Option<&dyn Fn() -> bool>,
-	) -> bool {
+	async fn fade_only(&mut self, fade: fn(f64) -> f64, back: &Canvas, front: &Canvas, cancel: CancelFn<'_>) -> bool {
 		let start = Instant::now();
 
 		loop {

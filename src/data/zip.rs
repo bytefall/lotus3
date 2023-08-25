@@ -26,11 +26,7 @@ pub fn unpack(data: &[u8]) -> Option<Vec<u8>> {
 		table[idx + 3] = if table[(byte_bx << 2) + 1] != 0 { 2 } else { 1 };
 
 		table[idx + 0] = byte_516d as u8;
-		table[idx + 1] = if table[(byte_516d << 2) + 1] != 0 {
-			2
-		} else {
-			1
-		};
+		table[idx + 1] = if table[(byte_516d << 2) + 1] != 0 { 2 } else { 1 };
 
 		counter -= 1;
 	}
@@ -45,13 +41,7 @@ pub fn unpack(data: &[u8]) -> Option<Vec<u8>> {
 	'main: while let Some(mut al) = data.next() {
 		if al == byte_5170 {
 			// loc_CB38
-			switcher(
-				&mut unpacked,
-				&mut case,
-				&mut word_516e,
-				0,
-				data.next().unwrap(),
-			);
+			switcher(&mut unpacked, &mut case, &mut word_516e, 0, data.next().unwrap());
 
 			if case < 0 {
 				break 'main;

@@ -66,7 +66,7 @@ pub async fn protection(state: &mut State) -> Result<()> {
 			state.screen.draw(&helmet1, (141, 13).into());
 			state.screen.draw(&helmet2, (141, 73).into());
 			state.screen.print(
-				&enter_code.get_or_insert_with(|| format!("ENTER CODE FOR WINDOW {}", instant.elapsed().as_millis())),
+				enter_code.get_or_insert_with(|| format!("ENTER CODE FOR WINDOW {}", instant.elapsed().as_millis())),
 				&font,
 				(60, 140).into(),
 			);

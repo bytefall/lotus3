@@ -90,8 +90,8 @@ impl Application {
 						match result {
 							Ok(Poll::Pending) => (),
 							Ok(Poll::Ready(())) => *control_flow = ControlFlow::Exit,
-							Err(err) => {
-								eprintln!("{:?}", err);
+							Err(e) => {
+								eprintln!("{e:?}");
 
 								*control_flow = ControlFlow::Exit;
 							}

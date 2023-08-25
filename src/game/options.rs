@@ -1,4 +1,4 @@
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Config {
 	pub p1_name: String,
 	pub p1_trans: Transmission,
@@ -29,25 +29,25 @@ impl Config {
 	}
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Transmission {
 	Manual = 0,
 	Automatic = 1,
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Acceleration {
 	Button = 0,
 	Joystick = 1,
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Race {
 	TimeLimit = 0,
 	Competition = 1,
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Course {
 	T1 = 0,
 	T2 = 1,
@@ -56,7 +56,7 @@ pub enum Course {
 	Unknown = 4,
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Model {
 	Esprit = 0,
 	Elan = 1,
