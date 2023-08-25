@@ -1,4 +1,4 @@
-use eyre::Result;
+use anyhow::Result;
 use std::{
 	cell::RefCell,
 	rc::Rc,

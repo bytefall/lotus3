@@ -11,9 +11,7 @@ mod screen;
 mod systems;
 mod task;
 
-fn main() -> eyre::Result<()> {
-	color_eyre::install()?;
-
+fn main() -> anyhow::Result<()> {
 	let arc = Archive::open(&lotus3::ARCHIVE_FILE_NAME)?;
 	let cfg = Config::new();
 	let app = Application::new("Lotus III: The Ultimate Challenge")?;

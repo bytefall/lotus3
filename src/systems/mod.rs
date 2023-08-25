@@ -1,9 +1,9 @@
+use anyhow::Result;
 use enum_dispatch::enum_dispatch;
-use eyre::Result;
 
 mod timer;
 
-pub use timer::Timer;
+pub use self::timer::Timer;
 
 #[enum_dispatch(SystemEnum)]
 pub trait System {

@@ -1,4 +1,4 @@
-use eyre::Result;
+use anyhow::Result;
 use pixels::{Pixels, PixelsBuilder, SurfaceTexture};
 use std::time::Instant;
 use winit::window::Window;

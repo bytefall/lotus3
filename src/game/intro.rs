@@ -1,4 +1,4 @@
-use eyre::Result;
+use anyhow::Result;
 use winit::event::VirtualKeyCode;
 
 use crate::{

@@ -1,4 +1,4 @@
-use eyre::{ErrReport, Result};
+use anyhow::Result;
 use std::{
 	cell::RefCell,
 	future::Future,
@@ -25,11 +25,11 @@ pub struct State {
 
 pub struct GameEngine {
 	systems: [SystemEnum; 1],
-	task: Pin<Box<dyn Future<Output = Result<(), ErrReport>>>>,
+	task: Pin<Box<dyn Future<Output = Result<()>>>>,
 }
 
 impl GameEngine {
-	pub fn new<T: Future<Output = Result<(), ErrReport>> + 'static>(
+	pub fn new<T: Future<Output = Result<()>> + 'static>(
 		arc: Archive,
 		cfg: Config,
 		input: Rc<RefCell<WinitInputHelper>>,

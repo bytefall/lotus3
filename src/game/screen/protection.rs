@@ -1,4 +1,4 @@
-use eyre::Result;
+use anyhow::Result;
 use std::time::Instant;
 use winit::event::VirtualKeyCode;
 use winput::TextChar;
