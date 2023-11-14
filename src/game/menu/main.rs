@@ -1,7 +1,6 @@
 use anyhow::Result;
 use std::cell::Ref;
-use winit::event::VirtualKeyCode;
-use winput::{TextChar, WinitInputHelper};
+use winit::keyboard::NamedKey;
 
 use super::{FRAME_OFFSET, FRAME_SIZE_ST, MENU_ITEM_SIZE};
 use crate::{
@@ -10,8 +9,10 @@ use crate::{
 	game::options::{Acceleration, Config, Course, Race, Transmission},
 	graphics::{
 		font::{Font, CHAR_SET_03, CHAR_SET_04},
-		Drawable, Frame, Sprite, FRAME_BORDER, SCREEN_START,
+		Frame, Sprite, FRAME_BORDER,
 	},
+	input::{InputHelper, BACKSPACE_CHAR},
+	screen::{fade_in, fade_out, screen, screen_at},
 	task::yield_now,
 };
 
@@ -37,8 +38,7 @@ pub enum Action {
 }
 
 pub async fn main_menu(state: &mut State) -> Result<Action> {
-	let (i14, pal) = state.arc.get_with_palette("I14")?;
-	state.screen.palette = pal;
+	let (i14, ref pal) = state.arc.get_with_palette("I14")?;
 
 	let bgr = Sprite::from(i14);
 
@@ -92,50 +92,46 @@ pub async fn main_menu(state: &mut State) -> Result<Action> {
 
 		if let Some(menu) = menu {
 			first_time = true;
-			state.screen.fade_out(None).await;
+			fade_out(None).await;
 
 			match menu {
-				Menu::Define => define_menu(state).await?,
+				Menu::Define => define_menu(state, pal).await?,
 			}
 		}
 
 		if first_time || key_pressed {
-			state.screen.draw(&bgr, SCREEN_START);
+			bgr.draw(screen(), pal);
 
-			state.screen.draw(&trans[state.cfg.p1_trans as usize], (6, 52).into());
-			state.screen.draw(&accel[state.cfg.p1_accel as usize], (6, 91).into());
-			state.screen.draw(&trans[state.cfg.p2_trans as usize], (214, 52).into());
-			state.screen.draw(&accel[state.cfg.p2_accel as usize], (214, 91).into());
-			state.screen.draw(&race[state.cfg.race as usize], (110, 52).into());
-			state.screen.draw(&course[state.cfg.course as usize], (110, 91).into());
-			state
-				.screen
-				.draw(&player[state.cfg.players_num as usize - 1], (110, 130).into());
+			trans[state.cfg.p1_trans as usize].draw(screen_at((6, 52)), pal);
+			accel[state.cfg.p1_accel as usize].draw(screen_at((6, 91)), pal);
+			trans[state.cfg.p2_trans as usize].draw(screen_at((214, 52)), pal);
+			accel[state.cfg.p2_accel as usize].draw(screen_at((214, 91)), pal);
+			race[state.cfg.race as usize].draw(screen_at((110, 52)), pal);
+			course[state.cfg.course as usize].draw(screen_at((110, 91)), pal);
 
-			state.screen.print(&state.cfg.p1_name, &font_c04, (13, 21).into());
-			state.screen.print(&state.cfg.p2_name, &font_c04, (221, 21).into());
-			state.screen.print(&state.cfg.code, &font_c03, (117, 177).into());
+			player[state.cfg.players_num as usize - 1].draw(screen_at((110, 130)), pal);
 
-			state.screen.draw(
-				&frame,
-				(
-					(pos.col as u32 * (frame.width() - FRAME_BORDER + 1) + FRAME_OFFSET.0),
-					(pos.row as u32 * (frame.height() - FRAME_BORDER + 1) + FRAME_OFFSET.1),
-				)
-					.into(),
+			font_c04.print(screen_at((13, 21)), &state.cfg.p1_name, pal);
+			font_c04.print(screen_at((221, 21)), &state.cfg.p2_name, pal);
+			font_c03.print(screen_at((117, 177)), &state.cfg.code, pal);
+
+			frame.draw(
+				screen_at((
+					(pos.col as u32 * (frame.size.width - FRAME_BORDER + 1) + FRAME_OFFSET.0),
+					(pos.row as u32 * (frame.size.height - FRAME_BORDER + 1) + FRAME_OFFSET.1),
+				)),
+				pal,
 			);
 
 			if first_time {
 				first_time = false;
 
-				state.screen.fade_in(None).await;
-			} else {
-				state.screen.present();
+				fade_in(None).await;
 			}
 		}
 	};
 
-	state.screen.fade_out(None).await;
+	fade_out(None).await;
 
 	Ok(action)
 }
@@ -163,40 +159,36 @@ enum Menu {
 	Define,
 }
 
-fn handle_input(
-	input: Ref<WinitInputHelper>,
-	pos: &mut Position,
-	cfg: &mut Config,
-) -> (bool, Option<Action>, Option<Menu>) {
+fn handle_input(input: Ref<InputHelper>, pos: &mut Position, cfg: &mut Config) -> (bool, Option<Action>, Option<Menu>) {
 	let mut key_pressed = false;
 	let mut action = None;
 	let mut menu = None;
 
-	if input.key_pressed(VirtualKeyCode::Up) && pos.row > 0 {
+	if input.key_pressed(NamedKey::ArrowUp) && pos.row > 0 {
 		pos.row -= 1;
 		pos.editor = false;
 		key_pressed = true;
 	}
 
-	if input.key_pressed(VirtualKeyCode::Down) && pos.row < 4 {
+	if input.key_pressed(NamedKey::ArrowDown) && pos.row < 4 {
 		pos.row += 1;
 		pos.editor = false;
 		key_pressed = true;
 	}
 
-	if input.key_pressed(VirtualKeyCode::Left) && pos.col > 0 {
+	if input.key_pressed(NamedKey::ArrowLeft) && pos.col > 0 {
 		pos.col -= 1;
 		pos.editor = false;
 		key_pressed = true;
 	}
 
-	if input.key_pressed(VirtualKeyCode::Right) && pos.col < 2 {
+	if input.key_pressed(NamedKey::ArrowRight) && pos.col < 2 {
 		pos.col += 1;
 		pos.editor = false;
 		key_pressed = true;
 	}
 
-	if input.key_pressed(VirtualKeyCode::Escape) {
+	if input.key_pressed(NamedKey::Escape) {
 		if pos.editor {
 			pos.editor = false;
 		} else {
@@ -206,7 +198,7 @@ fn handle_input(
 		key_pressed = true;
 	}
 
-	if input.key_pressed(VirtualKeyCode::Return) {
+	if input.key_pressed(NamedKey::Enter) {
 		match (pos.row, pos.col) {
 			(0, 0) => {
 				pos.editor = !pos.editor;
@@ -280,9 +272,9 @@ fn handle_input(
 	}
 
 	if pos.editor {
-		for key in input.text() {
-			match key {
-				TextChar::Char(c) => match (pos.row, pos.col) {
+		for c in input.chars() {
+			match c {
+				_ if c.is_ascii_alphabetic() || c.is_ascii_digit() => match (pos.row, pos.col) {
 					(0, 0) if cfg.p1_name.len() < 12 => {
 						cfg.p1_name.push(c.to_ascii_uppercase());
 						key_pressed = true;
@@ -297,7 +289,7 @@ fn handle_input(
 					}
 					_ => {}
 				},
-				TextChar::Back => match (pos.row, pos.col) {
+				BACKSPACE_CHAR => match (pos.row, pos.col) {
 					(0, 0) => {
 						cfg.p1_name.pop();
 						key_pressed = true;
@@ -312,6 +304,7 @@ fn handle_input(
 					}
 					_ => {}
 				},
+				_ => {}
 			}
 		}
 	}

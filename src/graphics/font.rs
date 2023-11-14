@@ -1,4 +1,4 @@
-use super::{Bitmap, Printable};
+use super::Bitmap;
 
 pub struct Font {
 	char_set: CharSet,
@@ -12,10 +12,8 @@ impl Font {
 			bitmap: Bitmap::from(data, 0, 0),
 		}
 	}
-}
 
-impl Printable for Font {
-	fn print(&self, buffer: &mut [u8], palette: &[u8], text: &str) {
+	pub fn print(&self, buffer: &mut [u32], text: &str, palette: &[u8]) {
 		let mut xx = 0;
 		let mut yy = 0;
 
@@ -37,14 +35,6 @@ impl Printable for Font {
 				xx += self.char_set.h_space;
 			}
 		}
-	}
-
-	fn width(&self, text: &str) -> u32 {
-		(text.len() as u32 * self.char_set.h_space) + 2
-	}
-
-	fn height(&self, text: &str) -> u32 {
-		(text.chars().filter(|c| c == &'\n').count() as u32 + 1) * self.char_set.v_space
 	}
 }
 

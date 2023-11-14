@@ -1,4 +1,4 @@
-use crate::graphics::{Point, SCREEN_BPP, SCREEN_WIDTH};
+use crate::graphics::{Point, SCREEN_WIDTH};
 
 pub struct Bitmap {
 	data: Vec<u8>,
@@ -11,7 +11,7 @@ impl Bitmap {
 		}
 	}
 
-	pub fn draw(&self, index: usize, point: Point, buffer: &mut [u8], palette: &[u8]) {
+	pub fn draw(&self, index: usize, point: Point, buffer: &mut [u32], palette: &[u8]) {
 		let pos = index << 3; // 8-byte table
 
 		let op_pos = u16::from_le_bytes([self.data[pos], self.data[pos + 1]]) << 4;
@@ -24,22 +24,24 @@ impl Bitmap {
 		let yy = point.y as usize;
 
 		for y in yy..yy + height {
-			let mut offset = (y * SCREEN_WIDTH as usize + xx) * SCREEN_BPP as usize;
+			let mut offset = y * SCREEN_WIDTH as usize + xx;
 
 			for _ in 0..repeat {
 				for o in OP_CODES[*data.next().unwrap() as usize] {
 					match o {
-						Code::Skip(num) => offset += num * SCREEN_BPP as usize,
+						Code::Skip(num) => offset += num,
 						Code::Draw(num) => {
 							for _ in 0..*num {
 								let val = *data.next().unwrap() as usize * 3;
 
-								buffer[offset + 0] = palette[val + 0] << 2;
-								buffer[offset + 1] = palette[val + 1] << 2;
-								buffer[offset + 2] = palette[val + 2] << 2;
-								buffer[offset + 3] = 255;
+								buffer[offset] = u32::from_be_bytes([
+									255,
+									palette[val] << 2,
+									palette[val + 1] << 2,
+									palette[val + 2] << 2,
+								]);
 
-								offset += SCREEN_BPP as usize;
+								offset += 1;
 							}
 						}
 					}

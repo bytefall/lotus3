@@ -1,8 +1,27 @@
 pub const SCREEN_WIDTH: u32 = 320;
 pub const SCREEN_HEIGHT: u32 = 200;
-pub const SCREEN_BPP: u32 = 4;
-pub const SCREEN_START: Point = Point::xy(0, 0);
 pub const SCREEN_SIZE: Size = Size::wh(SCREEN_WIDTH, SCREEN_HEIGHT);
+
+#[derive(Copy, Clone)]
+pub struct Canvas([u32; (SCREEN_WIDTH * SCREEN_HEIGHT) as usize]);
+
+impl Canvas {
+	pub const fn new() -> Self {
+		Self([0; (SCREEN_WIDTH * SCREEN_HEIGHT) as usize])
+	}
+
+	pub fn get(&self) -> &[u32] {
+		&self.0
+	}
+
+	pub fn raw(&mut self) -> &mut [u32] {
+		&mut self.0
+	}
+
+	pub fn raw_at(&mut self, pos: impl Into<Point>) -> &mut [u32] {
+		&mut self.0[pos.into().index()..]
+	}
+}
 
 #[derive(Clone)]
 pub struct Point {
@@ -15,8 +34,8 @@ impl Point {
 		Self { x, y }
 	}
 
-	pub fn range(&self) -> std::ops::RangeFrom<usize> {
-		((self.y * SCREEN_WIDTH + self.x) * SCREEN_BPP) as usize..
+	pub fn index(&self) -> usize {
+		(self.y * SCREEN_WIDTH + self.x) as usize
 	}
 }
 
@@ -53,53 +72,6 @@ pub struct Size {
 impl Size {
 	pub const fn wh(width: u32, height: u32) -> Self {
 		Self { width, height }
-	}
-}
-
-pub trait Drawable {
-	fn draw(&self, buffer: &mut [u8], palette: &[u8]);
-
-	fn width(&self) -> u32;
-
-	fn height(&self) -> u32;
-}
-
-pub trait Printable {
-	fn print(&self, buffer: &mut [u8], palette: &[u8], text: &str);
-
-	fn width(&self, text: &str) -> u32;
-
-	fn height(&self, text: &str) -> u32;
-}
-
-pub struct Canvas(Vec<u8>);
-
-impl Canvas {
-	pub fn draw(&mut self, sprite: &dyn Drawable, pal: &[u8], pos: Point) {
-		sprite.draw(&mut self.0[pos.range()], pal);
-	}
-
-	pub fn print(&mut self, text: &str, font: &dyn Printable, pal: &[u8], pos: Point) {
-		font.print(&mut self.0[pos.range()], pal, text);
-	}
-
-	pub fn point(&mut self, color: Color, pos: Point) {
-		let buffer = &mut self.0[pos.range()];
-
-		buffer[0] = color.r << 2;
-		buffer[1] = color.g << 2;
-		buffer[2] = color.b << 2;
-		buffer[3] = 255;
-	}
-
-	pub fn get(&self) -> &[u8] {
-		&self.0
-	}
-}
-
-impl Default for Canvas {
-	fn default() -> Self {
-		Self(vec![0u8; (SCREEN_WIDTH * SCREEN_HEIGHT * SCREEN_BPP) as usize])
 	}
 }
 

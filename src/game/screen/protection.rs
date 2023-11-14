@@ -1,14 +1,14 @@
 use anyhow::Result;
 use std::time::Instant;
-use winit::event::VirtualKeyCode;
-use winput::TextChar;
 
 use crate::{
 	engine::State,
 	graphics::{
 		font::{Font, CHAR_SET_03},
-		Size, Sprite, SCREEN_START,
+		Size, Sprite,
 	},
+	input::{BACKSPACE_CHAR, ENTER_CHAR, ESCAPE_CHAR},
+	screen::{fade_out, screen, screen_at},
 	task::yield_now,
 };
 
@@ -20,8 +20,7 @@ pub async fn protection(state: &mut State) -> Result<()> {
 	let i22 = state.arc.get("I22")?;
 	let mut i22 = i22.chunks((HELMET_SIZE.width * HELMET_SIZE.height) as usize);
 
-	let (i21, pal) = state.arc.get_with_palette("I21")?;
-	state.screen.palette = pal;
+	let (i21, ref pal) = state.arc.get_with_palette("I21")?;
 
 	let bgr = Sprite::from(i21);
 	let font = Font::from(CHAR_SET_03, state.arc.get("C03")?);
@@ -32,27 +31,21 @@ pub async fn protection(state: &mut State) -> Result<()> {
 	let mut enter_code: Option<String> = None;
 	let mut code = String::new();
 
-	loop {
+	'main: loop {
 		yield_now().await;
-
-		let input = state.input.borrow();
-
-		if input.key_pressed(VirtualKeyCode::Return) || input.key_pressed(VirtualKeyCode::Escape) {
-			break;
-		}
 
 		let mut key_pressed = false;
 
-		for key in &input.text() {
-			match key {
-				TextChar::Char(c) if code.len() < 3 => {
-					if c.is_ascii_alphabetic() || c.is_ascii_digit() {
-						code.push(c.to_ascii_uppercase());
-
-						key_pressed = true;
-					}
+		for c in state.input.borrow().chars() {
+			match c {
+				ENTER_CHAR | ESCAPE_CHAR => {
+					break 'main;
 				}
-				TextChar::Back if code.pop().is_some() => {
+				BACKSPACE_CHAR if code.pop().is_some() => {
+					key_pressed = true;
+				}
+				_ if code.len() < 3 && (c.is_ascii_alphabetic() || c.is_ascii_digit()) => {
+					code.push(c.to_ascii_uppercase());
 					key_pressed = true;
 				}
 				_ => {}
@@ -62,20 +55,20 @@ pub async fn protection(state: &mut State) -> Result<()> {
 		if first_time || key_pressed {
 			first_time = false;
 
-			state.screen.draw(&bgr, SCREEN_START);
-			state.screen.draw(&helmet1, (141, 13).into());
-			state.screen.draw(&helmet2, (141, 73).into());
-			state.screen.print(
+			bgr.draw(screen(), pal);
+			helmet1.draw(screen_at((141, 13)), pal);
+			helmet2.draw(screen_at((141, 73)), pal);
+
+			font.print(
+				screen_at((60, 140)),
 				enter_code.get_or_insert_with(|| format!("ENTER CODE FOR WINDOW {}", instant.elapsed().as_millis())),
-				&font,
-				(60, 140).into(),
+				pal,
 			);
-			state.screen.print(&code, &font, (150, 165).into());
-			state.screen.present();
+			font.print(screen_at((150, 165)), &code, pal);
 		}
 	}
 
-	state.screen.fade_out(None).await;
+	fade_out(None).await;
 
 	Ok(())
 }

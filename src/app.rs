@@ -1,104 +1,192 @@
 use anyhow::Result;
+use softbuffer::Surface;
 use std::{
 	cell::RefCell,
 	rc::Rc,
 	sync::Arc,
 	task::{Context, Poll, Waker},
+	time::{Duration, Instant},
 };
 use winit::{
-	dpi::{LogicalPosition, PhysicalSize},
-	event::{Event, WindowEvent},
+	dpi::PhysicalSize,
+	event::{ElementState, Event, KeyEvent, WindowEvent},
 	event_loop::{ControlFlow, EventLoop},
-	window::{Window as WinitWindow, WindowBuilder},
+	keyboard::{Key, ModifiersState},
+	window::{Fullscreen, Window, WindowBuilder},
 };
-use winput::WinitInputHelper;
 
 use crate::{
 	graphics::{SCREEN_HEIGHT, SCREEN_WIDTH},
-	screen::Screen,
+	input::InputHelper,
+	screen::{get_screen_state, screen, set_screen_state},
 	task::Signal,
 };
 
-const SCREEN_SCALE: u32 = 2;
-
 pub struct Application {
-	window: WinitWindow,
+	window: Rc<Window>,
 	event_loop: EventLoop<()>,
-	input: Rc<RefCell<WinitInputHelper>>,
+	surface: Surface<Rc<Window>, Rc<Window>>,
+	scale: u32,
+	input: Rc<RefCell<InputHelper>>,
 }
+
+const DEFAULT_DELAY: Duration = Duration::from_millis(1);
+const SCREEN_REDRAW: Duration = Duration::from_millis(1000 / 30);
 
 impl Application {
 	pub fn new(title: &str) -> Result<Self> {
-		let size = PhysicalSize::new(SCREEN_WIDTH * SCREEN_SCALE, SCREEN_HEIGHT * SCREEN_SCALE);
-		let event_loop = EventLoop::new();
+		let event_loop = EventLoop::new()?;
 
-		let window = WindowBuilder::new()
-			.with_visible(false)
-			.with_title(title)
-			.with_inner_size(size)
-			.with_min_inner_size(size)
-			.with_resizable(false)
-			.build(&event_loop)?;
+		let scale = 3;
+		let size = PhysicalSize::new(SCREEN_WIDTH * scale, SCREEN_HEIGHT * scale);
 
-		let (monitor_width, monitor_height) = {
-			if let Some(monitor) = window.current_monitor() {
-				let size = monitor.size().to_logical(window.scale_factor());
-				(size.width, size.height)
-			} else {
-				(SCREEN_WIDTH, SCREEN_HEIGHT)
-			}
-		};
-
-		let center = LogicalPosition::new(
-			(monitor_width - SCREEN_WIDTH * SCREEN_SCALE) as f32 / 2.0,
-			(monitor_height - SCREEN_HEIGHT * SCREEN_SCALE) as f32 / 2.0,
+		let window = Rc::new(
+			WindowBuilder::new()
+				.with_title(title)
+				.with_resizable(false)
+				.with_inner_size(size)
+				.build(&event_loop)?,
 		);
 
-		window.set_outer_position(center);
-		window.set_visible(true);
+		window.set_cursor_visible(false);
+
+		let size = window.inner_size();
+		let scale = (size.width / SCREEN_WIDTH).min(size.height / SCREEN_HEIGHT);
+
+		let context = softbuffer::Context::new(window.clone()).unwrap();
+		let mut surface = Surface::new(&context, window.clone()).unwrap();
+
+		surface.resize(size.width.try_into()?, size.height.try_into()?).unwrap();
 
 		Ok(Self {
 			window,
 			event_loop,
-			input: Rc::new(RefCell::new(WinitInputHelper::new())),
+			surface,
+			scale,
+			input: Rc::new(RefCell::new(InputHelper::new())),
 		})
 	}
 
-	pub fn get_screen(&self) -> Result<Screen> {
-		Screen::from_window(&self.window)
-	}
-
-	pub fn get_input(&self) -> Rc<RefCell<WinitInputHelper>> {
-		Rc::clone(&self.input)
-	}
-
-	pub fn run(self, mut step: impl FnMut(&mut Context<'static>, &Signal) -> Result<Poll<()>> + 'static) -> ! {
+	pub fn run(
+		mut self,
+		mut step: impl FnMut(&mut Context<'static>, &Signal) -> Result<Poll<()>> + 'static,
+	) -> Result<()> {
 		let signal = Arc::new(Signal::new());
 		let waker = Waker::from(Arc::clone(&signal));
 		let mut ctx = Context::from_waker(Box::leak(Box::new(waker)));
 
-		self.event_loop.run(move |event, _, control_flow| {
+		let mut last_redraw = Instant::now();
+		let mut modifiers = ModifiersState::default();
+		let mut fullscreen = false;
+
+		self.event_loop.run(move |event, elwt| {
 			match &event {
-				Event::WindowEvent { event, .. } if event == &WindowEvent::CloseRequested => {
-					*control_flow = ControlFlow::Exit;
+				Event::NewEvents(_) => {
+					self.input.as_ref().borrow_mut().clear();
 				}
-				Event::LoopDestroyed => {}
-				_ => {
-					if self.input.borrow_mut().update(&event) {
-						let result = step(&mut ctx, &signal);
+				Event::WindowEvent { event, .. } => match event {
+					WindowEvent::ModifiersChanged(new) => {
+						modifiers = new.state();
+					}
+					WindowEvent::Resized(size) => {
+						self.surface
+							.resize(size.width.try_into().unwrap(), size.height.try_into().unwrap())
+							.unwrap();
 
-						match result {
-							Ok(Poll::Pending) => (),
-							Ok(Poll::Ready(())) => *control_flow = ControlFlow::Exit,
-							Err(e) => {
-								eprintln!("{e:?}");
+						self.scale = (size.width / SCREEN_WIDTH).min(size.height / SCREEN_HEIGHT);
+					}
+					WindowEvent::RedrawRequested => {
+						let mut buf = self.surface.buffer_mut().unwrap();
 
-								*control_flow = ControlFlow::Exit;
+						let mut dst = buf.iter_mut();
+						let mut src = screen().chunks_exact(SCREEN_WIDTH as usize).flat_map(|y| {
+							(0..self.scale).flat_map(|_| y.iter().flat_map(|x| (0..self.scale).map(|_| *x)))
+						});
+
+						while let (Some(dst), Some(src)) = (dst.next(), src.next()) {
+							*dst = src;
+						}
+
+						buf.present().unwrap();
+
+						set_screen_state();
+						last_redraw = Instant::now();
+					}
+					WindowEvent::KeyboardInput {
+						event:
+							KeyEvent {
+								logical_key: Key::Character(c),
+								state: ElementState::Pressed,
+								..
+							},
+						..
+					} if modifiers.alt_key() => match c.as_str() {
+						c @ ("=" | "-") if !fullscreen => {
+							let scale = match (c, self.scale) {
+								("=", s @ ..=3) => s + 1,
+								("-", s @ 2..) => s - 1,
+								(_, _) => return,
+							};
+
+							let Some(mon) = self.window.current_monitor() else {
+								return;
+							};
+
+							let size = PhysicalSize::new(SCREEN_WIDTH * scale, SCREEN_HEIGHT * scale);
+
+							if size < mon.size() {
+								if let Some(size) = self.window.request_inner_size(size) {
+									self.surface
+										.resize(size.width.try_into().unwrap(), size.height.try_into().unwrap())
+										.unwrap();
+
+									self.scale = scale;
+								}
 							}
+						}
+						"f" => {
+							fullscreen = !fullscreen;
+
+							self.window
+								.set_fullscreen(fullscreen.then_some(Fullscreen::Borderless(None)));
+						}
+						_ => (),
+					},
+					WindowEvent::KeyboardInput { event, .. } => {
+						self.input.borrow_mut().handle(event.clone());
+					}
+					WindowEvent::CloseRequested => {
+						elwt.exit();
+					}
+					_ => {}
+				},
+				Event::AboutToWait => {
+					let result = step(&mut ctx, &signal);
+
+					match result {
+						Ok(Poll::Pending) => {
+							if get_screen_state() && last_redraw.elapsed() >= SCREEN_REDRAW {
+								self.window.request_redraw();
+							} else {
+								elwt.set_control_flow(ControlFlow::wait_duration(DEFAULT_DELAY));
+							}
+						}
+						Ok(Poll::Ready(())) => elwt.exit(),
+						Err(e) => {
+							eprintln!("{e:?}");
+
+							elwt.exit();
 						}
 					}
 				}
+				_ => {}
 			};
-		});
+		})?;
+
+		Ok(())
+	}
+
+	pub fn input(&self) -> Rc<RefCell<InputHelper>> {
+		Rc::clone(&self.input)
 	}
 }

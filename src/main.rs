@@ -1,5 +1,3 @@
-#![allow(clippy::identity_op)]
-
 use crate::{app::Application, data::Archive, engine::GameEngine, game::options::Config};
 
 mod app;
@@ -7,8 +5,8 @@ mod data;
 mod engine;
 mod game;
 mod graphics;
+mod input;
 mod screen;
-mod systems;
 mod task;
 
 fn main() -> anyhow::Result<()> {
@@ -16,7 +14,7 @@ fn main() -> anyhow::Result<()> {
 	let cfg = Config::new();
 	let app = Application::new("Lotus III: The Ultimate Challenge")?;
 
-	let mut game = GameEngine::new(arc, cfg, app.get_input(), app.get_screen()?, game::main)?;
+	let mut game = GameEngine::new(arc, cfg, app.input(), game::main)?;
 
-	app.run(move |ctx, signal| game.step(ctx, signal));
+	app.run(move |ctx, signal| game.step(ctx, signal))
 }

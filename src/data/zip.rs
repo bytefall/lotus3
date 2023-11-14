@@ -25,7 +25,7 @@ pub fn unpack(data: &[u8]) -> Option<Vec<u8>> {
 		table[idx + 2] = byte_bx as u8;
 		table[idx + 3] = if table[(byte_bx << 2) + 1] != 0 { 2 } else { 1 };
 
-		table[idx + 0] = byte_516d as u8;
+		table[idx] = byte_516d as u8;
 		table[idx + 1] = if table[(byte_516d << 2) + 1] != 0 { 2 } else { 1 };
 
 		counter -= 1;
@@ -56,7 +56,7 @@ pub fn unpack(data: &[u8]) -> Option<Vec<u8>> {
 
 			let idx = usize::from(al) << 2;
 
-			al = table[idx + 0];
+			al = table[idx];
 			ah = table[idx + 1];
 
 			if ah == 0 {

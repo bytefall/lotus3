@@ -1,4 +1,4 @@
-use super::{Drawable, Point, Size, SCREEN_SIZE};
+use super::{Point, Size, SCREEN_SIZE};
 
 pub struct Sprite {
 	data: Vec<u8>,
@@ -17,30 +17,17 @@ impl Sprite {
 		self.size = size;
 		self
 	}
-}
 
-impl Drawable for Sprite {
-	fn draw(&self, buffer: &mut [u8], palette: &[u8]) {
-		let mut iter = self.data.iter();
+	pub fn draw(&self, buffer: &mut [u32], palette: &[u8]) {
+		let mut src = self.data.iter();
 
 		for y in 0..self.size.height {
 			for x in 0..self.size.width {
-				let data = *iter.next().unwrap() as usize;
-				let buffer = &mut buffer[Point::xy(x, y).range()];
+				let src = *src.next().unwrap() as usize * 3;
 
-				buffer[0] = palette[data * 3 + 0] << 2;
-				buffer[1] = palette[data * 3 + 1] << 2;
-				buffer[2] = palette[data * 3 + 2] << 2;
-				buffer[3] = 255;
+				buffer[Point::xy(x, y).index()] =
+					u32::from_be_bytes([255, palette[src] << 2, palette[src + 1] << 2, palette[src + 2] << 2]);
 			}
 		}
-	}
-
-	fn width(&self) -> u32 {
-		self.size.width
-	}
-
-	fn height(&self) -> u32 {
-		self.size.height
 	}
 }

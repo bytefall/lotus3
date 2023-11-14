@@ -1,10 +1,11 @@
 use anyhow::Result;
-use winit::event::VirtualKeyCode;
+use winit::keyboard::{Key, NamedKey};
 
 use crate::{
 	engine::State,
 	game::options::Model,
-	graphics::{Point, Size, Sprite, SCREEN_START},
+	graphics::{Point, Size, Sprite},
+	screen::{fade_in, fade_out, screen, screen_at},
 	task::yield_now,
 };
 
@@ -21,28 +22,28 @@ const KEYS: &[(&str, &str)] = &[
 pub async fn select_model(state: &mut State) -> Result<Option<Model>> {
 	let mut model = Model::default();
 
-	let mut sprites: Option<(Sprite, Vec<Sprite>)> = None;
+	let mut sprites: Option<(Sprite, Vec<Sprite>, Vec<u8>)> = None;
 	let mut frame: Option<usize> = None;
-	let mut fade_out = false;
+	let mut fade = false;
 
-	let selection = loop {
+	let selection = 'main: loop {
 		yield_now().await;
 
-		{
-			let input = state.input.borrow();
-
-			if input.key_pressed(VirtualKeyCode::Left) {
-				model = model.prev();
-				sprites = None;
-				fade_out = true;
-			} else if input.key_pressed(VirtualKeyCode::Right) {
-				model = model.next();
-				sprites = None;
-				fade_out = true;
-			} else if input.key_pressed(VirtualKeyCode::Return) {
-				break Some(model);
-			} else if input.key_pressed(VirtualKeyCode::Escape) {
-				break None;
+		for k in state.input.borrow().keys() {
+			match k {
+				Key::Named(NamedKey::ArrowLeft) => {
+					model = model.prev();
+					sprites = None;
+					fade = true;
+				}
+				Key::Named(NamedKey::ArrowRight) => {
+					model = model.next();
+					sprites = None;
+					fade = true;
+				}
+				Key::Named(NamedKey::Enter) => break 'main Some(model),
+				Key::Named(NamedKey::Escape) => break 'main None,
+				_ => {}
 			}
 		}
 
@@ -51,48 +52,49 @@ pub async fn select_model(state: &mut State) -> Result<Option<Model>> {
 			let (bgr, pal) = state.arc.get_with_palette(bgr_key)?;
 			let anim = state.arc.get(ani_key)?;
 
-			state.screen.palette = pal;
-
 			frame = None;
 			sprites = Some((
 				Sprite::from(bgr),
 				anim.chunks((ANIM_SIZE.width * ANIM_SIZE.height) as usize)
 					.map(|i| Sprite::from(i.to_vec()).with_size(ANIM_SIZE))
 					.collect(),
+				pal,
 			));
 		}
 
-		if fade_out {
-			fade_out = false;
+		if fade {
+			fade = false;
 
-			state.screen.fade_out(None).await;
+			fade_out(None).await;
 		}
 
-		state.screen.draw(&sprites.as_ref().unwrap().0, SCREEN_START);
+		let Some((bgr, anim, pal)) = &sprites else {
+			break None;
+		};
 
-		frame = Some(match frame {
-			Some(i) => {
-				state.screen.draw(&sprites.as_ref().unwrap().1[i], ANIM_POS);
-				state.screen.present();
+		bgr.draw(screen(), pal);
 
+		match frame {
+			Some(ref mut i) => {
 				std::thread::sleep(std::time::Duration::from_millis(ANIM_DELAY));
 
-				if i + 1 < sprites.as_ref().unwrap().1.len() {
-					i + 1
-				} else {
-					0
+				anim[*i].draw(screen_at(ANIM_POS), pal);
+				*i += 1;
+
+				if *i == anim.len() {
+					*i = 0;
 				}
 			}
 			None => {
-				state.screen.draw(&sprites.as_ref().unwrap().1[0], ANIM_POS);
-				state.screen.fade_in(None).await;
+				anim[0].draw(screen_at(ANIM_POS), pal);
+				frame = Some(1);
 
-				1
+				fade_in(None).await;
 			}
-		});
+		}
 	};
 
-	state.screen.fade_out(None).await;
+	fade_out(None).await;
 
 	Ok(selection)
 }

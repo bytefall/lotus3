@@ -1,4 +1,4 @@
-use super::{Color, Point, Printable};
+use super::{Color, Point};
 
 const CHARS: &str = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ.()";
 
@@ -23,10 +23,8 @@ impl SpriteFont {
 	pub fn from(data: Vec<u8>) -> Self {
 		Self { data }
 	}
-}
 
-impl Printable for SpriteFont {
-	fn print(&self, buffer: &mut [u8], _palette: &[u8], text: &str) {
+	pub fn print(&self, buffer: &mut [u32], text: &str) {
 		let mut xx = 0;
 		let mut yy = 0;
 
@@ -53,25 +51,13 @@ impl Printable for SpriteFont {
 							continue;
 						}
 
-						let buffer = &mut buffer[Point::xy(x, y).range()];
-
-						buffer[0] = PALETTE[val].r << 2;
-						buffer[1] = PALETTE[val].g << 2;
-						buffer[2] = PALETTE[val].b << 2;
-						buffer[3] = 255;
+						buffer[Point::xy(x, y).index()] =
+							u32::from_be_bytes([255, PALETTE[val].r << 2, PALETTE[val].g << 2, PALETTE[val].b << 2]);
 					}
 				}
 
 				xx += HORIZONTAL_SPACE;
 			}
 		}
-	}
-
-	fn width(&self, text: &str) -> u32 {
-		text.len() as u32 * HORIZONTAL_SPACE
-	}
-
-	fn height(&self, text: &str) -> u32 {
-		(text.chars().filter(|c| c == &'\n').count() as u32 + 1) * VERTICAL_SPACE
 	}
 }

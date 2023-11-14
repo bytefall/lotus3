@@ -1,9 +1,10 @@
 use anyhow::Result;
-use winit::event::VirtualKeyCode;
+use winit::keyboard::NamedKey;
 
 use crate::{
 	engine::State,
-	graphics::{Canvas, Color, Point, Size, Sprite, SpriteFont, SCREEN_START},
+	graphics::{Canvas, Color, Point, Size, Sprite, SpriteFont},
+	screen::{fade_in, fade_in_only, fade_out, fade_out_by_color, fade_out_only, screen, screen_at, screen_copy},
 	task::sleep,
 };
 
@@ -12,9 +13,9 @@ macro_rules! cancel_fn {
 		|| {
 			let input = $state.input.borrow();
 
-			input.key_pressed(VirtualKeyCode::Return)
-				|| input.key_pressed(VirtualKeyCode::Escape)
-				|| input.key_pressed(VirtualKeyCode::Space)
+			input.key_pressed(NamedKey::Enter)
+				|| input.key_pressed(NamedKey::Escape)
+				|| input.key_pressed(NamedKey::Space)
 		}
 	};
 }
@@ -30,13 +31,12 @@ macro_rules! try_ok {
 pub async fn show_gremlin(state: &mut State) -> Result<bool> {
 	const SPLASH_SIZE: Size = Size::wh(16, 8);
 
-	let (q00, pal) = state.arc.get_with_palette("Q00")?;
+	let (q00, ref pal) = state.arc.get_with_palette("Q00")?;
 
-	state.screen.palette = pal;
-	state.screen.draw(&Sprite::from(q00), SCREEN_START);
+	Sprite::from(q00).draw(screen(), pal);
 
 	let cancel = cancel_fn!(state);
-	try_ok!(state.screen.fade_in(Some(&cancel)).await);
+	try_ok!(fade_in(Some(&cancel)).await);
 	try_ok!(sleep(200).with_cancel(&cancel).await);
 
 	let stars = state.arc.get_series("Q01", SPLASH_SIZE.width * SPLASH_SIZE.height)?;
@@ -44,11 +44,9 @@ pub async fn show_gremlin(state: &mut State) -> Result<bool> {
 	for i in [0usize, 1, 2, 3, 2, 1, 0] {
 		let timer = sleep(100).with_cancel(&cancel);
 
-		state.screen.draw(
-			&Sprite::from(stars[i].to_vec()).with_size(SPLASH_SIZE),
-			(112, 85).into(),
-		);
-		state.screen.present();
+		Sprite::from(stars[i].to_vec())
+			.with_size(SPLASH_SIZE)
+			.draw(screen_at((112, 85)), pal);
 
 		try_ok!(timer.await);
 	}
@@ -56,16 +54,14 @@ pub async fn show_gremlin(state: &mut State) -> Result<bool> {
 	for i in [4usize, 5, 6, 7, 6, 5, 4] {
 		let timer = sleep(100).with_cancel(&cancel);
 
-		state.screen.draw(
-			&Sprite::from(stars[i].to_vec()).with_size(SPLASH_SIZE),
-			(144, 110).into(),
-		);
-		state.screen.present();
+		Sprite::from(stars[i].to_vec())
+			.with_size(SPLASH_SIZE)
+			.draw(screen_at((144, 110)), pal);
 
 		try_ok!(timer.await);
 	}
 
-	try_ok!(state.screen.fade_out(Some(&cancel)).await);
+	try_ok!(fade_out(Some(&cancel)).await);
 
 	Ok(true)
 }
@@ -78,20 +74,18 @@ pub async fn show_magnetic_fields(state: &mut State) -> Result<bool> {
 
 	let cancel = cancel_fn!(state);
 
-	let (_, pal) = state.arc.get_with_palette(KEYS.last().unwrap())?;
-	state.screen.palette = pal;
+	let (_, ref pal) = state.arc.get_with_palette(KEYS.last().unwrap())?;
 
 	for key in KEYS {
 		let timer = sleep(50).with_cancel(&cancel);
 
-		state.screen.draw(&Sprite::from(state.arc.get(key)?), SCREEN_START);
-		state.screen.present();
+		Sprite::from(state.arc.get(key)?).draw(screen(), pal);
 
 		try_ok!(timer.await);
 	}
 
 	try_ok!(sleep(1000).with_cancel(&cancel).await);
-	try_ok!(state.screen.fade_out(Some(&cancel)).await);
+	try_ok!(fade_out(Some(&cancel)).await);
 
 	Ok(true)
 }
@@ -128,35 +122,33 @@ pub async fn show_credits(state: &mut State) -> Result<bool> {
 		None,
 	];
 
-	let (q19, pal) = state.arc.get_with_palette("Q19")?;
+	let (q19, ref pal) = state.arc.get_with_palette("Q19")?;
 
 	let bgr = Sprite::from(q19);
-	state.screen.palette = pal;
-	state.screen.draw(&bgr, SCREEN_START);
+
+	bgr.draw(screen(), pal);
 
 	let cancel = cancel_fn!(state);
-	try_ok!(state.screen.fade_in(Some(&cancel)).await);
+	try_ok!(fade_in(Some(&cancel)).await);
 	try_ok!(sleep(2000).with_cancel(&cancel).await);
 
-	let mut front = Canvas::default();
-	let mut back = Canvas::default();
-	back.draw(&bgr, &state.screen.palette, SCREEN_START);
+	let (back, mut front) = (screen_copy(), Canvas::new());
 
 	let font = SpriteFont::from(state.arc.get("Q1A")?);
 
 	for item in CREDITS {
 		match item {
 			Some((text, x, y)) => {
-				front.print(text, &font, &state.screen.palette, (x, y).into());
+				font.print(front.raw_at((x, y)), text);
 			}
 			None => {
-				try_ok!(state.screen.fade_in_only(&back, &front, Some(&cancel)).await);
+				try_ok!(fade_in_only(&back, &front, Some(&cancel)).await);
 				try_ok!(sleep(CREDITS_FADE_IN_TIMEOUT).with_cancel(&cancel).await);
 
-				try_ok!(state.screen.fade_out_only(&back, &front, Some(&cancel)).await);
+				try_ok!(fade_out_only(&back, &front, Some(&cancel)).await);
 				try_ok!(sleep(CREDITS_FADE_OUT_TIMEOUT).with_cancel(&cancel).await);
 
-				front = Canvas::default();
+				front = Canvas::new();
 			}
 		}
 	}
@@ -166,12 +158,8 @@ pub async fn show_credits(state: &mut State) -> Result<bool> {
 	for step in 1..=36 {
 		let timer = sleep(50).with_cancel(&cancel);
 
-		let mut front = Canvas::default();
-		draw_a_car(&mut front, &q1b, &state.screen.palette, step);
-
-		state.screen.draw(&bgr, SCREEN_START);
-		state.screen.blit(&front);
-		state.screen.present();
+		bgr.draw(screen(), pal);
+		draw_a_car(screen(), &q1b, pal, step);
 
 		try_ok!(timer.await);
 	}
@@ -179,8 +167,7 @@ pub async fn show_credits(state: &mut State) -> Result<bool> {
 	for key in ["Q1C", "Q1D"] {
 		let timer = sleep(50).with_cancel(&cancel);
 
-		state.screen.draw(&Sprite::from(state.arc.get(key)?), SCREEN_START);
-		state.screen.present();
+		Sprite::from(state.arc.get(key)?).draw(screen(), pal);
 
 		try_ok!(timer.await);
 	}
@@ -188,25 +175,22 @@ pub async fn show_credits(state: &mut State) -> Result<bool> {
 	let q1e = state.arc.get("Q1E")?;
 	let color_ix = q1e[0] as usize;
 
-	state.screen.draw(&Sprite::from(q1e), SCREEN_START);
-	state.screen.present();
+	Sprite::from(q1e).draw(screen(), pal);
 
 	try_ok!(sleep(2000).with_cancel(&cancel).await);
 
-	let color = state
-		.screen
-		.palette
+	let color = pal
 		.get(color_ix * 3..color_ix * 3 + 3)
 		.map(|rgb| Color::rgb(rgb[0] << 2, rgb[1] << 2, rgb[2] << 2));
 
-	try_ok!(state.screen.fade_out_by_color(color.unwrap(), Some(&cancel)).await);
+	try_ok!(fade_out_by_color(color.unwrap(), Some(&cancel)).await);
 	try_ok!(sleep(4000).with_cancel(&cancel).await);
-	try_ok!(state.screen.fade_out(Some(&cancel)).await);
+	try_ok!(fade_out(Some(&cancel)).await);
 
 	Ok(true)
 }
 
-fn draw_a_car(canvas: &mut Canvas, data: &[u8], pal: &[u8], step: usize) {
+fn draw_a_car(canvas: &mut [u32], data: &[u8], pal: &[u8], step: usize) {
 	const WIDTH: usize = 336; // NB: not 320!
 
 	let cx = 256 + (36 - step) * 512;
@@ -224,10 +208,8 @@ fn draw_a_car(canvas: &mut Canvas, data: &[u8], pal: &[u8], step: usize) {
 			let px = data[i] as usize;
 
 			if px != 0xFF {
-				canvas.point(
-					(pal[px * 3 + 0], pal[px * 3 + 1], pal[px * 3 + 2]).into(),
-					(x as u32, y as u32).into(),
-				);
+				canvas[Point::xy(x as u32, y as u32).index()] =
+					u32::from_be_bytes([255, pal[px * 3] << 2, pal[px * 3 + 1] << 2, pal[px * 3 + 2] << 2]);
 			}
 
 			x += 1;
@@ -238,15 +220,14 @@ fn draw_a_car(canvas: &mut Canvas, data: &[u8], pal: &[u8], step: usize) {
 }
 
 pub async fn show_lotus_logo(state: &mut State) -> Result<bool> {
-	let (q18, pal) = state.arc.get_with_palette("Q18")?;
+	let (q18, ref pal) = state.arc.get_with_palette("Q18")?;
 
-	state.screen.palette = pal;
-	state.screen.draw(&Sprite::from(q18), SCREEN_START);
+	Sprite::from(q18).draw(screen(), pal);
 
 	let cancel = cancel_fn!(state);
-	try_ok!(state.screen.fade_in(Some(&cancel)).await);
+	try_ok!(fade_in(Some(&cancel)).await);
 	try_ok!(sleep(2000).with_cancel(&cancel).await);
-	try_ok!(state.screen.fade_out(Some(&cancel)).await);
+	try_ok!(fade_out(Some(&cancel)).await);
 
 	Ok(true)
 }
@@ -255,9 +236,7 @@ pub async fn show_magazine(state: &mut State) -> Result<bool> {
 	const VIDEO_SIZE: Size = Size::wh(160, 112);
 	const VIDEO_POS: Point = Point::xy(136, 38);
 
-	let (v32, pal) = state.arc.get_with_palette("V32")?;
-
-	state.screen.palette = pal;
+	let (v32, ref pal) = state.arc.get_with_palette("V32")?;
 
 	fn get_with_leading_pal(mut raw: Vec<u8>, pal: &[u8]) -> Result<(Vec<u8>, Vec<u8>)> {
 		let dat = raw.split_off(720);
@@ -274,52 +253,46 @@ pub async fn show_magazine(state: &mut State) -> Result<bool> {
 		"V20", "V21", "V22", "V23", "V24", "V25", "V26", "V27", "V28",
 	];
 
-	let mut back = Canvas::default();
-	let mut front = Canvas::default();
+	let mut back = Canvas::new();
+	let mut front = Canvas::new();
 
 	let bgr = Sprite::from(v32);
-	back.draw(&bgr, &state.screen.palette, SCREEN_START);
-	state.screen.draw(&bgr, SCREEN_START);
+	bgr.draw(back.raw(), pal);
+	bgr.draw(screen(), pal);
 
 	let cancel = cancel_fn!(state);
 
 	for key in KEYS {
 		let timer = sleep(100).with_cancel(&cancel);
 
-		let (vxx, pal) = get_with_leading_pal(state.arc.get(key)?, &state.screen.palette)?;
+		let (vxx, ref pal) = get_with_leading_pal(state.arc.get(key)?, pal)?;
 		let vxx = Sprite::from(vxx).with_size(VIDEO_SIZE);
 
-		state.screen.palette = pal;
-		state.screen.draw(&vxx, VIDEO_POS);
+		vxx.draw(screen_at(VIDEO_POS), pal);
 
 		if Some(&key) == KEYS.first() {
-			try_ok!(state.screen.fade_in(Some(&cancel)).await);
+			try_ok!(fade_in(Some(&cancel)).await);
 		} else {
-			state.screen.present();
-
 			// save the last frame
 			if Some(&key) == KEYS.last() {
-				front.draw(&vxx, &state.screen.palette, VIDEO_POS);
+				vxx.draw(front.raw_at(VIDEO_POS), pal);
 			}
 		}
 
 		try_ok!(timer.await);
 	}
 
-	try_ok!(state.screen.fade_out_only(&back, &front, Some(&cancel)).await);
+	try_ok!(fade_out_only(&back, &front, Some(&cancel)).await);
 
-	let (v33, pal) = get_with_leading_pal(state.arc.get("V33")?, &state.screen.palette)?;
+	let (v33, ref pal) = get_with_leading_pal(state.arc.get("V33")?, pal)?;
 
-	state.screen.palette = pal;
-	front.draw(
-		&Sprite::from(v33).with_size(VIDEO_SIZE),
-		&state.screen.palette,
-		VIDEO_POS,
-	);
+	Sprite::from(v33)
+		.with_size(VIDEO_SIZE)
+		.draw(front.raw_at(VIDEO_POS), pal);
 
-	try_ok!(state.screen.fade_in_only(&back, &front, Some(&cancel)).await);
+	try_ok!(fade_in_only(&back, &front, Some(&cancel)).await);
 	try_ok!(sleep(2000).with_cancel(&cancel).await);
-	try_ok!(state.screen.fade_out(Some(&cancel)).await);
+	try_ok!(fade_out(Some(&cancel)).await);
 
 	Ok(true)
 }

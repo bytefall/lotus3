@@ -1,6 +1,6 @@
 use anyhow::Result;
 
-use crate::engine::State;
+use crate::{engine::State, screen::fade_out};
 
 mod intro;
 mod menu;
@@ -23,7 +23,7 @@ pub async fn main(mut state: State) -> Result<()> {
 	ok = ok && show_magazine(&mut state).await?;
 
 	if !ok {
-		state.screen.fade_out(None).await;
+		fade_out(None).await;
 	}
 
 	let mut play_demo = true;
