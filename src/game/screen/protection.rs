@@ -17,15 +17,13 @@ pub async fn protection(state: &mut State) -> Result<()> {
 
 	let instant = Instant::now();
 
-	let i22 = state.arc.get("I22")?;
-	let mut i22 = i22.chunks((HELMET_SIZE.width * HELMET_SIZE.height) as usize);
-
 	let (i21, ref pal) = state.arc.get_with_palette("I21")?;
+	let i22 = state.arc.get_series("I22", HELMET_SIZE.width * HELMET_SIZE.height)?;
 
 	let bgr = Sprite::from(i21);
 	let font = Font::from(CHAR_SET_03, state.arc.get("C03")?);
-	let helmet1 = Sprite::from(i22.next().unwrap().to_vec()).with_size(HELMET_SIZE);
-	let helmet2 = Sprite::from(i22.next().unwrap().to_vec()).with_size(HELMET_SIZE);
+	let helmet1 = Sprite::from(i22[0].clone()).with_size(HELMET_SIZE);
+	let helmet2 = Sprite::from(i22[1].clone()).with_size(HELMET_SIZE);
 
 	let mut first_time = true;
 	let mut enter_code: Option<String> = None;

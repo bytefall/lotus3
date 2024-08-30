@@ -50,16 +50,15 @@ pub async fn select_model(state: &mut State) -> Result<Option<Model>> {
 		if sprites.is_none() {
 			let (bgr_key, ani_key) = KEYS[model as usize];
 			let (bgr, pal) = state.arc.get_with_palette(bgr_key)?;
-			let anim = state.arc.get(ani_key)?;
+			let anim = state
+				.arc
+				.get_series(ani_key, ANIM_SIZE.width * ANIM_SIZE.height)?
+				.into_iter()
+				.map(|x| Sprite::from(x).with_size(ANIM_SIZE))
+				.collect();
 
 			frame = None;
-			sprites = Some((
-				Sprite::from(bgr),
-				anim.chunks((ANIM_SIZE.width * ANIM_SIZE.height) as usize)
-					.map(|i| Sprite::from(i.to_vec()).with_size(ANIM_SIZE))
-					.collect(),
-				pal,
-			));
+			sprites = Some((Sprite::from(bgr), anim, pal));
 		}
 
 		if fade {
