@@ -1,11 +1,2 @@
-# cargo
 /target/
-**/*.rs.bk
-
-# IDE files
-.idea
-.vscode
-*.iml
-
-# Lotus itself
 lotus.dat
