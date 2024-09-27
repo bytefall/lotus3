@@ -46,7 +46,7 @@ pub async fn show_gremlin(state: &mut State) -> Result<bool> {
         .arc
         .get_series("Q01", SPLASH_SIZE.width * SPLASH_SIZE.height)?;
 
-    for i in [0usize, 1, 2, 3, 2, 1, 0] {
+    for i in [0, 1, 2, 3, 2, 1, 0] {
         let timer = sleep(100).with_cancel(&cancel);
 
         Sprite::from(stars[i].to_vec())
@@ -56,7 +56,7 @@ pub async fn show_gremlin(state: &mut State) -> Result<bool> {
         try_ok!(timer.await);
     }
 
-    for i in [4usize, 5, 6, 7, 6, 5, 4] {
+    for i in [4, 5, 6, 7, 6, 5, 4] {
         let timer = sleep(100).with_cancel(&cancel);
 
         Sprite::from(stars[i].to_vec())
@@ -98,33 +98,38 @@ pub async fn show_magnetic_fields(state: &mut State) -> Result<bool> {
 pub async fn show_credits(state: &mut State) -> Result<bool> {
     const CREDITS_FADE_IN_TIMEOUT: u64 = 2000;
     const CREDITS_FADE_OUT_TIMEOUT: u64 = 1000;
-    const CREDITS: [Option<(&str, u32, u32)>; 26] = [
-        Some(("A GAME", 118, 43)),
-        Some(("BY", 146, 67)),
-        Some(("ANDREW MORRIS", 69, 91)),
-        Some(("AND", 139, 115)),
-        Some(("SHAUN SOUTHERN", 62, 139)),
-        None,
-        Some(("LEVEL DESIGN", 76, 67)),
-        Some(("BY", 146, 91)),
-        Some(("PETER LIGGETT", 69, 115)),
-        None,
-        Some(("MUSIC", 125, 67)),
-        Some(("BY", 146, 91)),
-        Some(("PATRICK PHELAN", 62, 115)),
-        None,
-        Some(("PC CONVERSION", 69, 43)),
-        Some(("BY", 146, 67)),
-        Some(("JON MEDHURST FOR", 48, 91)),
-        Some(("CYGNUS SOFTWARE", 55, 115)),
-        Some(("ENGINEERING LTD.", 52, 139)),
-        None,
-        Some(("COPYRIGHT 1993", 62, 43)),
-        Some(("MAGNETIC FIELDS", 55, 67)),
-        Some(("(SOFTWARE DESIGN) LTD.", 10, 91)),
-        Some(("GREMLIN GRAPHICS", 48, 115)),
-        Some(("SOFTWARE LTD.", 73, 139)),
-        None,
+    const CREDITS: [&[(&str, u32, u32)]; 5] = [
+        &[
+            ("A GAME", 118, 43),
+            ("BY", 146, 67),
+            ("ANDREW MORRIS", 69, 91),
+            ("AND", 139, 115),
+            ("SHAUN SOUTHERN", 62, 139),
+        ],
+        &[
+            ("LEVEL DESIGN", 76, 67),
+            ("BY", 146, 91),
+            ("PETER LIGGETT", 69, 115),
+        ],
+        &[
+            ("MUSIC", 125, 67),
+            ("BY", 146, 91),
+            ("PATRICK PHELAN", 62, 115),
+        ],
+        &[
+            ("PC CONVERSION", 69, 43),
+            ("BY", 146, 67),
+            ("JON MEDHURST FOR", 48, 91),
+            ("CYGNUS SOFTWARE", 55, 115),
+            ("ENGINEERING LTD.", 52, 139),
+        ],
+        &[
+            ("COPYRIGHT 1993", 62, 43),
+            ("MAGNETIC FIELDS", 55, 67),
+            ("(SOFTWARE DESIGN) LTD.", 10, 91),
+            ("GREMLIN GRAPHICS", 48, 115),
+            ("SOFTWARE LTD.", 73, 139),
+        ],
     ];
 
     let (q19, ref pal) = state.arc.get_with_palette("Q19")?;
@@ -137,25 +142,21 @@ pub async fn show_credits(state: &mut State) -> Result<bool> {
     try_ok!(fade_in(Some(&cancel)).await);
     try_ok!(sleep(2000).with_cancel(&cancel).await);
 
-    let (back, mut front) = (screen_copy(), Canvas::new());
-
     let font = SpriteFont::from(state.arc.get("Q1A")?);
+    let back = screen_copy();
 
-    for item in CREDITS {
-        match item {
-            Some((text, x, y)) => {
-                font.print(front.raw_at((x, y)), text);
-            }
-            None => {
-                try_ok!(fade_in_only(&back, &front, Some(&cancel)).await);
-                try_ok!(sleep(CREDITS_FADE_IN_TIMEOUT).with_cancel(&cancel).await);
+    for page in CREDITS {
+        let mut front = Canvas::new();
 
-                try_ok!(fade_out_only(&back, &front, Some(&cancel)).await);
-                try_ok!(sleep(CREDITS_FADE_OUT_TIMEOUT).with_cancel(&cancel).await);
-
-                front = Canvas::new();
-            }
+        for (text, x, y) in page {
+            font.print(front.raw_at((*x, *y)), text);
         }
+
+        try_ok!(fade_in_only(&back, &front, Some(&cancel)).await);
+        try_ok!(sleep(CREDITS_FADE_IN_TIMEOUT).with_cancel(&cancel).await);
+
+        try_ok!(fade_out_only(&back, &front, Some(&cancel)).await);
+        try_ok!(sleep(CREDITS_FADE_OUT_TIMEOUT).with_cancel(&cancel).await);
     }
 
     let q1b = state.arc.get("Q1B")?;
